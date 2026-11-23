@@ -5,7 +5,45 @@ export type Database = {
   
   "crm": {
           Tables: {
-            "companies": {
+            "activities": {
+                  Row: {
+                    "author_id": string,"company_id": string,"contact_id": string | null,"id": string,"kind": Database["crm"]['Enums']["activity_kind"],"occurred_at": string,"sandbox_id": string,"text": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "author_id": string,"company_id": string,"contact_id"?: string | null,"id"?: string,"kind": Database["crm"]['Enums']["activity_kind"],"occurred_at"?: string,"sandbox_id"?: string,"text": string
+                  }
+                  Update: {
+                    "author_id"?: string,"company_id"?: string,"contact_id"?: string | null,"id"?: string,"kind"?: Database["crm"]['Enums']["activity_kind"],"occurred_at"?: string,"sandbox_id"?: string,"text"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "activities_sandbox_id_author_id_fkey"
+      columns: ["sandbox_id","author_id"]
+isOneToOne: false
+      referencedRelation: "teammates"
+      referencedColumns: ["sandbox_id","id"]
+    },{
+      foreignKeyName: "activities_sandbox_id_company_id_contact_id_fkey"
+      columns: ["sandbox_id","company_id","contact_id"]
+isOneToOne: false
+      referencedRelation: "contacts"
+      referencedColumns: ["sandbox_id","company_id","id"]
+    },{
+      foreignKeyName: "activities_sandbox_id_company_id_fkey"
+      columns: ["sandbox_id","company_id"]
+isOneToOne: false
+      referencedRelation: "companies"
+      referencedColumns: ["sandbox_id","id"]
+    },{
+      foreignKeyName: "activities_sandbox_id_fkey"
+      columns: ["sandbox_id"]
+isOneToOne: false
+      referencedRelation: "sandboxes"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"companies": {
                   Row: {
                     "added_at": string,"city": string,"id": string,"industry": string,"name": string,"owner_id": string,"sandbox_id": string
                   }
@@ -29,6 +67,32 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "teammates"
       referencedColumns: ["sandbox_id","id"]
+    }
+                  ]
+                },"contacts": {
+                  Row: {
+                    "company_id": string,"email": string,"id": string,"job_title": string,"name": string,"phone": string,"sandbox_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "company_id": string,"email"?: string,"id"?: string,"job_title"?: string,"name": string,"phone"?: string,"sandbox_id"?: string
+                  }
+                  Update: {
+                    "company_id"?: string,"email"?: string,"id"?: string,"job_title"?: string,"name"?: string,"phone"?: string,"sandbox_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "contacts_sandbox_id_company_id_fkey"
+      columns: ["sandbox_id","company_id"]
+isOneToOne: false
+      referencedRelation: "companies"
+      referencedColumns: ["sandbox_id","id"]
+    },{
+      foreignKeyName: "contacts_sandbox_id_fkey"
+      columns: ["sandbox_id"]
+isOneToOne: false
+      referencedRelation: "sandboxes"
+      referencedColumns: ["id"]
     }
                   ]
                 },"sandboxes": {
@@ -93,7 +157,7 @@ isOneToOne: false
       } }
           }
           Enums: {
-            [_ in never]: never
+            "activity_kind": "Email"|"Call"|"Meeting"|"Note"
           }
           CompositeTypes: {
             [_ in never]: never
@@ -209,7 +273,7 @@ export type CompositeTypes<
 export const Constants = {
   "crm": {
           Enums: {
-            
+            "activity_kind": ["Email", "Call", "Meeting", "Note"]
           }
         }
 } as const

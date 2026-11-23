@@ -2,6 +2,10 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+/* Light mode only: shadcn's dark: styles apply under a .dark class this app never sets,
+   not whenever the visitor's system is in dark mode. */
+@custom-variant dark (&:is(.dark *));
+
 /*
  * Variant H "Sales desk" (see the v1 spec, "Look"): flat Swiss minimalism,
  * professional blue, Plus Jakarta Sans. Light mode only. No gradients or

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import { expectOk } from "./support/results";
 import { visitorWithSandbox } from "./support/visitors";
 
 // Required test (spec, Testing Decisions): one visitor can never read, change
@@ -112,5 +113,81 @@ describe("Sandbox isolation", () => {
 
     expect(error).not.toBeNull();
     expect(await theirCompanyNames()).not.toContain("Planted Co.");
+  });
+
+  describe("for Contacts and Activities", () => {
+    const tables = ["contacts", "activities"] as const;
+
+    async function theirRows(table: (typeof tables)[number]) {
+      const { data, error } = await theirs.db.schema("crm").from(table).select("*").order("id");
+      if (error) throw error;
+      return data;
+    }
+
+    it("can't read another Sandbox's Contacts or Activities", async () => {
+      for (const table of tables) {
+        const { data } = await mine.db.schema("crm").from(table).select("id").eq("sandbox_id", theirs.sandbox.id);
+        expect(data, table).toEqual([]);
+      }
+    });
+
+    it("can't change another Sandbox's Contacts or Activities", async () => {
+      const before = { contacts: await theirRows("contacts"), activities: await theirRows("activities") };
+
+      await mine.db.schema("crm").from("contacts").update({ name: "Hacked" }).eq("sandbox_id", theirs.sandbox.id);
+      await mine.db.schema("crm").from("activities").update({ text: "Hacked" }).eq("sandbox_id", theirs.sandbox.id);
+
+      expect(await theirRows("contacts")).toEqual(before.contacts);
+      expect(await theirRows("activities")).toEqual(before.activities);
+    });
+
+    it("can't delete another Sandbox's Contacts or Activities", async () => {
+      for (const table of tables) {
+        const before = await theirRows(table);
+
+        await mine.db.schema("crm").from(table).delete().eq("sandbox_id", theirs.sandbox.id);
+
+        expect(await theirRows(table), table).toEqual(before);
+      }
+    });
+
+    it("can't link one of their own Activities to another Sandbox's Contact", async () => {
+      const [theirCompany] = await listCompanies(theirs);
+      const theirContact = expectOk(await theirs.crm.contacts.create(theirCompany.id, { name: "Only In Their Sandbox" }));
+
+      // Same Company id exists in both Sandboxes (copied from the Template); the Contact doesn't.
+      const logged = await mine.crm.activities.log({
+        companyId: theirCompany.id,
+        contactId: theirContact.id,
+        kind: "Note",
+        occurredAt: new Date(),
+        text: "Trying to reach across Sandboxes.",
+      });
+
+      expect(logged).toEqual({ ok: false, error: "contact_not_found" });
+    });
+
+    it("can't add a Contact or Activity to another Sandbox", async () => {
+      const [theirCompany] = await listCompanies(theirs);
+      const crm = mine.db.schema("crm");
+
+      const contact = await crm
+        .from("contacts")
+        .insert({ sandbox_id: theirs.sandbox.id, company_id: theirCompany.id, name: "Planted Person" });
+      const activity = await crm.from("activities").insert({
+        sandbox_id: theirs.sandbox.id,
+        company_id: theirCompany.id,
+        author_id: await personaId(theirs),
+        kind: "Note",
+        text: "Planted note",
+      });
+
+      expect(contact.error).not.toBeNull();
+      expect(activity.error).not.toBeNull();
+      const theirContacts = await theirs.db.schema("crm").from("contacts").select("name");
+      const theirActivities = await theirs.db.schema("crm").from("activities").select("text");
+      expect(theirContacts.data!.map((row) => row.name)).not.toContain("Planted Person");
+      expect(theirActivities.data!.map((row) => row.text)).not.toContain("Planted note");
+    });
   });
 });

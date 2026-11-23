@@ -1,8 +1,16 @@
 const DAY = 24 * 60 * 60 * 1000;
 
-/** "today", "yesterday", "3 days ago", "5 months ago", "2 years ago". */
+/** Midnight at the start of `date`'s calendar day, in this runtime's time zone. */
+function startOfDay(date: Date): number {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+}
+
+/**
+ * "today", "yesterday", "3 days ago", "5 months ago", "2 years ago", counted
+ * in calendar days in this runtime's time zone (the visitor's, in the browser).
+ */
 export function agoLabel(date: Date, now = new Date()): string {
-  const days = Math.floor((now.getTime() - date.getTime()) / DAY);
+  const days = Math.round((startOfDay(now) - startOfDay(date)) / DAY);
   if (days <= 0) return "today";
   if (days === 1) return "yesterday";
   if (days < 60) return `${days} days ago`;
@@ -13,4 +21,9 @@ export function agoLabel(date: Date, now = new Date()): string {
 
 export function fullName(owner: { firstName: string; lastName: string }): string {
   return `${owner.firstName} ${owner.lastName}`;
+}
+
+/** "Nov 21, 2026", in this runtime's time zone. */
+export function longDate(date: Date): string {
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }

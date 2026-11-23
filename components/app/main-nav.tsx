@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Suspense } from "react";
 
 const ITEMS = [
   { href: "/home", label: "Home" },
@@ -10,13 +11,28 @@ const ITEMS = [
   { href: "/retainers", label: "Retainers" },
 ] as const;
 
-export function MainNav({ className = "" }: { className?: string }) {
-  const pathname = usePathname();
+type NavProps = { className?: string };
+
+// On dynamic routes the current path is only known at request time, so the
+// nav first renders without a highlight and then marks the active item.
+export function MainNav(props: NavProps) {
+  return (
+    <Suspense fallback={<NavList {...props} pathname={null} />}>
+      <CurrentNav {...props} />
+    </Suspense>
+  );
+}
+
+function CurrentNav(props: NavProps) {
+  return <NavList {...props} pathname={usePathname()} />;
+}
+
+function NavList({ className = "", pathname }: NavProps & { pathname: string | null }) {
   return (
     <nav aria-label="Main" className={className}>
       <ul className="flex items-center gap-1 text-[14px] font-semibold">
         {ITEMS.map((item) => {
-          const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+          const active = pathname !== null && (pathname === item.href || pathname.startsWith(`${item.href}/`));
           return (
             <li key={item.href}>
               <Link

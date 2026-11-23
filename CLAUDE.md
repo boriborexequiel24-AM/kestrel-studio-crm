@@ -133,6 +133,12 @@ workflow demo.
   (decided 2026-11-24). A `.env` pointing at the live project can't leak into a test run.
 - **"Built by Zeki" links to https://workwithbori.cloud for now** (decided 2026-11-24). The new
   portfolio in `../Automations/` isn't live yet; switch the link when it is.
+- **Template Company names were web-checked; 9 clashing names replaced** (decided 2026-11-24).
+  Public demo, so no real business should appear in it. Details in ticket 03's comment.
+- **Companies text filter runs in the CRM module, not as a database pattern** (decided
+  2026-11-24). About 40 rows per Sandbox, and visitor text never reaches query syntax.
+- **Forms are dialogs over server actions; a failed save keeps what was typed** (decided
+  2026-11-24). React resets forms after an action, so errors carry the submitted values back.
 - **Every `crm` function revokes PUBLIC execute itself** (decided 2026-11-24). Postgres grants it
   by default and a per-schema default privilege can't undo that; found in review of ticket 02.
 
