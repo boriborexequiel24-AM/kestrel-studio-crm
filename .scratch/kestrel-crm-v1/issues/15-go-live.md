@@ -13,3 +13,8 @@
 - [ ] Two browsers on the live address can't see each other's changes.
 - [ ] After a few real AI actions, the usage table shows cost per action, and `DEMO_DAILY_AI_ACTION_CAP` is set from it.
 - [ ] `CLAUDE.md` records the live address and the deploy steps.
+
+## Comments
+
+**2026-11-24, from ticket 04.** Two settings for the shared Supabase project: (1) raise the anonymous sign-in rate limit (Auth rate limits, 30 per hour per IP by default), because every sign-in comes from Vercel's servers, so the default would cap the whole demo at about 30 new visitors an hour; this app limits Sandboxes per visitor network itself. (2) Enable pg_cron before applying migrations; the cleanup migration schedules `crm-clean-up-expired-sandboxes` hourly.
+

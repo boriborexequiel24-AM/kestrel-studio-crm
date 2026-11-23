@@ -18,17 +18,17 @@ export type Database = {
                   }
                   Relationships: [
                     {
+      foreignKeyName: "activities_contact_at_company"
+      columns: ["sandbox_id","company_id","contact_id"]
+isOneToOne: false
+      referencedRelation: "contacts"
+      referencedColumns: ["sandbox_id","company_id","id"]
+    },{
       foreignKeyName: "activities_sandbox_id_author_id_fkey"
       columns: ["sandbox_id","author_id"]
 isOneToOne: false
       referencedRelation: "teammates"
       referencedColumns: ["sandbox_id","id"]
-    },{
-      foreignKeyName: "activities_sandbox_id_company_id_contact_id_fkey"
-      columns: ["sandbox_id","company_id","contact_id"]
-isOneToOne: false
-      referencedRelation: "contacts"
-      referencedColumns: ["sandbox_id","company_id","id"]
     },{
       foreignKeyName: "activities_sandbox_id_company_id_fkey"
       columns: ["sandbox_id","company_id"]
@@ -95,6 +95,20 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"sandbox_openings": {
+                  Row: {
+                    "id": number,"ip_hash": string,"opened_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "id"?: never,"ip_hash": string,"opened_at"?: string
+                  }
+                  Update: {
+                    "id"?: never,"ip_hash"?: string,"opened_at"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
                 },"sandboxes": {
                   Row: {
                     "created_at": string,"expires_at": string | null,"id": string,"is_template": boolean,"user_id": string | null
@@ -135,14 +149,17 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            "current_sandbox_id":
+            "clean_up_expired_sandboxes":
+{ Args: Record<PropertyKey, never>; Returns: number
+                           },
+"current_sandbox_id":
 { Args: Record<PropertyKey, never>; Returns: string
                            },
 "fill_sandbox":
 { Args: { "target": string }; Returns: undefined
                            },
 "open_sandbox":
-{ Args: Record<PropertyKey, never>; Returns: {
+{ Args: { "daily_limit": number,"ip_hash": string }; Returns: {
               "created_at": string,
 "expires_at": string | null,
 "id": string,
@@ -154,7 +171,15 @@ isOneToOne: false
         to: "sandboxes"
         isOneToOne: true
         isSetofReturn: false
-      } }
+      } },
+"sandbox_row_counts":
+{ Args: { "target": string }; Returns: {
+              "row_count": number,"table_name": string
+            }[]
+                           },
+"start_over":
+{ Args: Record<PropertyKey, never>; Returns: undefined
+                           }
           }
           Enums: {
             "activity_kind": "Email"|"Call"|"Meeting"|"Note"

@@ -1,7 +1,8 @@
+import { Suspense } from "react";
 import { LockKeyhole, RotateCcw, Sparkles } from "lucide-react";
 import { LogoMark } from "@/components/app/logo";
-import { OpenDemoButton } from "@/components/landing/open-demo-button";
-import { openDemo } from "./actions";
+import { DemoEntry } from "@/components/landing/demo-entry";
+import { OpenDemoForm } from "@/components/landing/open-demo-form";
 
 const POINTS = [
   {
@@ -21,7 +22,7 @@ const POINTS = [
   },
 ];
 
-export default function LandingPage() {
+export default function LandingPage({ searchParams }: PageProps<"/">) {
   return (
     <main className="mx-auto flex min-h-screen max-w-3xl flex-col px-4 py-12 md:py-20">
       <div className="flex-1">
@@ -42,10 +43,11 @@ export default function LandingPage() {
           ))}
         </ul>
 
-        <form action={openDemo} className="mt-10">
-          <OpenDemoButton />
-        </form>
-        <p className="mt-3 text-[13px] text-muted-foreground">No sign-up. Kestrel Studio is fictional and all data is fake.</p>
+        <div className="mt-10">
+          <Suspense fallback={<OpenDemoForm />}>
+            <DemoEntry searchParams={searchParams} />
+          </Suspense>
+        </div>
       </div>
 
       <footer className="mt-16 text-[13px] text-muted-foreground">

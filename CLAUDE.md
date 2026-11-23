@@ -139,6 +139,15 @@ workflow demo.
   2026-11-24). About 40 rows per Sandbox, and visitor text never reaches query syntax.
 - **Forms are dialogs over server actions; a failed save keeps what was typed** (decided
   2026-11-24). React resets forms after an action, so errors carry the submitted values back.
+- **Start over and new Sandboxes shift dates to "now", not to when the Sandbox was created**
+  (decided 2026-11-24, refines the 2026-11-22 entry on relative dates). A Sandbox that starts
+  over looks as current as a new one.
+- **Sandbox limit per network is a rolling 24 hours, capped at 50 inside the database**
+  (decided 2026-11-24). Simple and fair; the cap stops a direct API caller lifting the limit.
+- **Cleanup deletes only this app's users: expired Sandbox owners and users tagged
+  `app: kestrel-crm`** (decided 2026-11-24). The Supabase project is shared with other demos.
+- **The landing page's "your Sandbox was reset" notice comes from a cookie holding the expiry
+  time** (decided 2026-11-24). A visitor returning the next day has no valid sign-in left to check.
 - **Every `crm` function revokes PUBLIC execute itself** (decided 2026-11-24). Postgres grants it
   by default and a per-schema default privilege can't undo that; found in review of ticket 02.
 

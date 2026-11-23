@@ -19,6 +19,13 @@ export function agoLabel(date: Date, now = new Date()): string {
   return `${Math.floor(days / 365.25)} years ago`;
 }
 
+/** "in 23 hours", "in 1 hour", "in less than an hour". */
+export function hoursLeftLabel(until: Date, now = new Date()): string {
+  const hours = Math.floor((until.getTime() - now.getTime()) / (60 * 60 * 1000));
+  if (hours < 1) return "in less than an hour";
+  return hours === 1 ? "in 1 hour" : `in ${hours} hours`;
+}
+
 export function fullName(owner: { firstName: string; lastName: string }): string {
   return `${owner.firstName} ${owner.lastName}`;
 }

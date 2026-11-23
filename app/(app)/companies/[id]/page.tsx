@@ -8,6 +8,7 @@ import { DeleteCompanyButton, EditCompanyButton } from "@/components/companies/c
 import { AddContactButton, ContactActions } from "@/components/companies/contact-forms";
 import { ActivityActions, LogActivityButton } from "@/components/companies/activity-forms";
 import { ownerOptions } from "@/components/companies/owner-options";
+import { SandboxLine } from "@/components/app/sandbox-line";
 import { StatusChip } from "@/components/companies/status-chip";
 import type { CompanyDetail } from "@/lib/crm";
 import { requireLiveSandbox, valueOrLanding } from "@/lib/crm/server";
@@ -53,6 +54,7 @@ async function CompanyView({ params }: { params: Promise<{ id: string }> }) {
             {(company.industry || company.city) && ". "}
             Owner: <span className="font-semibold text-foreground">{fullName(company.owner)}</span>
           </p>
+          <SandboxLine />
         </div>
         <div className="flex gap-2">
           <EditCompanyButton

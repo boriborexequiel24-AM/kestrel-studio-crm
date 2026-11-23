@@ -1,13 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { newVisitor, operator, visitorWithSandbox } from "./support/visitors";
-
-const HOUR = 60 * 60 * 1000;
+import { HOUR, expireSandbox, newVisitor, operator, visitorWithSandbox } from "./support/visitors";
 
 describe("opening the demo", () => {
   it("gives a new visitor a live Sandbox that lasts 24 hours", async () => {
-    const { crm } = newVisitor();
+    const { crm, ip } = newVisitor();
 
-    const opened = await crm.sandbox.open();
+    const opened = await crm.sandbox.open({ ip });
 
     expect(opened.ok).toBe(true);
     const status = await crm.sandbox.status();
@@ -19,18 +17,18 @@ describe("opening the demo", () => {
   });
 
   it("gives a returning visitor the same Sandbox, not a new one", async () => {
-    const { crm, sandbox } = await visitorWithSandbox();
+    const { crm, sandbox, ip } = await visitorWithSandbox();
 
-    const again = await crm.sandbox.open();
+    const again = await crm.sandbox.open({ ip });
 
     expect(again).toEqual({ ok: true, value: sandbox });
   });
 
   it("gives one Sandbox when the visitor clicks twice at once", async () => {
-    const { crm, db } = newVisitor();
+    const { crm, db, ip } = newVisitor();
     await db.auth.signInAnonymously();
 
-    const [first, second] = await Promise.all([crm.sandbox.open(), crm.sandbox.open()]);
+    const [first, second] = await Promise.all([crm.sandbox.open({ ip }), crm.sandbox.open({ ip })]);
 
     expect(first).toEqual(second);
   });
@@ -66,10 +64,10 @@ describe("without a live Sandbox", () => {
   });
 
   it("a visitor whose Sandbox ran out can open a fresh one", async () => {
-    const { crm, sandbox } = await visitorWithSandbox();
+    const { crm, sandbox, ip } = await visitorWithSandbox();
     await expireSandbox(sandbox.id);
 
-    const reopened = await crm.sandbox.open();
+    const reopened = await crm.sandbox.open({ ip });
 
     expect(reopened.ok).toBe(true);
     if (!reopened.ok) return;
@@ -80,11 +78,11 @@ describe("without a live Sandbox", () => {
   });
 
   it("a visitor whose anonymous user was removed, with a token still in hand, can open a fresh one", async () => {
-    const { crm, db, sandbox } = await visitorWithSandbox();
+    const { crm, db, sandbox, ip } = await visitorWithSandbox();
     const { data } = await db.auth.getUser();
     await operator().auth.admin.deleteUser(data.user!.id);
 
-    const reopened = await crm.sandbox.open();
+    const reopened = await crm.sandbox.open({ ip });
 
     expect(reopened.ok).toBe(true);
     if (!reopened.ok) return;
@@ -92,12 +90,3 @@ describe("without a live Sandbox", () => {
     expect((await crm.sandbox.status()).state).toBe("live");
   });
 });
-
-async function expireSandbox(id: string) {
-  const { error } = await operator()
-    .schema("crm")
-    .from("sandboxes")
-    .update({ created_at: new Date(Date.now() - 25 * HOUR).toISOString(), expires_at: new Date(Date.now() - HOUR).toISOString() })
-    .eq("id", id);
-  if (error) throw error;
-}

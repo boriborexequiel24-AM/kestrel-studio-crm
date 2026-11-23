@@ -3,8 +3,8 @@ import type { AiProvider } from "@/lib/ai/provider";
 import { activitiesArea } from "./activities";
 import { companiesArea } from "./companies";
 import { contactsArea } from "./contacts";
-import { fail, type CrmContext, type CrmSupabaseClient, type InLiveSandbox } from "./core";
-import { sandboxArea } from "./sandbox";
+import type { CrmContext, CrmSupabaseClient } from "./core";
+import { sandboxArea, type SandboxLimits } from "./sandbox";
 import { teamArea } from "./team";
 
 /**
@@ -14,7 +14,7 @@ import { teamArea } from "./team";
  */
 
 export type { CrmSupabaseClient, NoLiveSandbox, OwnerRef, Result } from "./core";
-export type { SandboxInfo, SandboxStatus } from "./sandbox";
+export type { SandboxInfo, SandboxLimits, SandboxStatus } from "./sandbox";
 export type { Owner } from "./team";
 export type {
   Activity,
@@ -28,21 +28,11 @@ export { ACTIVITY_KINDS, COMPANY_STATUSES, type ActivityKind, type CompanyStatus
 export type { ContactInput } from "./contacts";
 export type { ActivityFields, ActivityInput } from "./activities";
 
-export type CrmDeps = { ai?: AiProvider };
+export type CrmDeps = { ai?: AiProvider; limits: SandboxLimits };
 
-export function createCrm(supabase: CrmSupabaseClient, deps: CrmDeps = {}) {
-  void deps;
+export function createCrm(supabase: CrmSupabaseClient, deps: CrmDeps) {
   const db = supabase.schema("crm");
-  const sandbox = sandboxArea(supabase, db);
-
-  // RLS already hides every row without a live Sandbox; this turns that into
-  // a result the UI can explain.
-  const inLiveSandbox: InLiveSandbox = async (work) => {
-    const current = await sandbox.status();
-    if (current.state === "none") return fail("no_sandbox");
-    if (current.state === "expired") return fail("sandbox_expired");
-    return work();
-  };
+  const { area: sandbox, inLiveSandbox } = sandboxArea(supabase, db, deps.limits);
 
   const context: CrmContext = { db, inLiveSandbox };
   return {

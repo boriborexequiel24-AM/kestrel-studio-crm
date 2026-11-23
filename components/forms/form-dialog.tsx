@@ -110,17 +110,19 @@ function DialogForm({
   );
 }
 
-type ConfirmDeleteDialogProps = {
+type ConfirmDialogProps = {
   trigger: ReactNode;
   title: string;
   description: string;
   action: FormAction;
   confirmLabel: string;
-  hidden: Record<string, string>;
+  /** Shown on the button while the action runs, such as "Deleting...". */
+  pendingLabel: string;
+  hidden?: Record<string, string>;
 };
 
-/** Asks before a delete, which can't be undone. */
-export function ConfirmDeleteDialog({ trigger, title, description, action, confirmLabel, hidden }: ConfirmDeleteDialogProps) {
+/** Asks before something that can't be undone, such as a delete or Start over. */
+export function ConfirmDialog({ trigger, title, description, ...form }: ConfirmDialogProps) {
   const [open, setOpen] = useState(false);
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
@@ -130,18 +132,24 @@ export function ConfirmDeleteDialog({ trigger, title, description, action, confi
           <AlertDialogTitle className="text-[20px] font-bold">{title}</AlertDialogTitle>
           <AlertDialogDescription className="text-[14px]">{description}</AlertDialogDescription>
         </AlertDialogHeader>
-        <ConfirmForm action={action} confirmLabel={confirmLabel} hidden={hidden} onDone={() => setOpen(false)} />
+        <ConfirmForm {...form} onDone={() => setOpen(false)} />
       </AlertDialogContent>
     </AlertDialog>
   );
 }
 
+/** Asks before a delete. */
+export function ConfirmDeleteDialog(props: Omit<ConfirmDialogProps, "pendingLabel">) {
+  return <ConfirmDialog {...props} pendingLabel="Deleting..." />;
+}
+
 function ConfirmForm({
   action,
   confirmLabel,
-  hidden,
+  pendingLabel,
+  hidden = {},
   onDone,
-}: Pick<ConfirmDeleteDialogProps, "action" | "confirmLabel" | "hidden"> & { onDone: () => void }) {
+}: Pick<ConfirmDialogProps, "action" | "confirmLabel" | "pendingLabel" | "hidden"> & { onDone: () => void }) {
   const [state, formAction, pending] = useDialogAction(action, onDone);
   return (
     <form action={formAction} className="grid gap-4">
@@ -150,7 +158,7 @@ function ConfirmForm({
       <AlertDialogFooter className="gap-2">
         <AlertDialogCancel className="h-11 rounded-lg px-4">Cancel</AlertDialogCancel>
         <Button type="submit" variant="destructive" disabled={pending} className="h-11 rounded-lg px-5 font-semibold">
-          {pending ? "Deleting..." : confirmLabel}
+          {pending ? pendingLabel : confirmLabel}
         </Button>
       </AlertDialogFooter>
     </form>
