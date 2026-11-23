@@ -14,7 +14,16 @@ type ContactOption = { id: string; name: string };
 /** An Activity as the edit form needs it. `occurredAt` is an ISO string. */
 export type EditableActivity = { id: string; kind: ActivityKind; occurredAt: string; contactId: string | null; text: string };
 
-export function LogActivityButton({ companyId, contacts }: { companyId: string; contacts: ContactOption[] }) {
+/** Logs an Activity on a Company, and on one of its Deals when `dealId` is given. */
+export function LogActivityButton({
+  companyId,
+  dealId,
+  contacts,
+}: {
+  companyId: string;
+  dealId?: string;
+  contacts: ContactOption[];
+}) {
   return (
     <FormDialog
       trigger={
@@ -26,7 +35,7 @@ export function LogActivityButton({ companyId, contacts }: { companyId: string; 
       description="Record an email, call, meeting or note. Nothing is sent."
       action={logActivity}
       submitLabel="Log Activity"
-      hidden={{ companyId }}
+      hidden={dealId ? { companyId, dealId } : { companyId }}
     >
       <ActivityFields contacts={contacts} />
     </FormDialog>

@@ -5,11 +5,16 @@ import { usePathname } from "next/navigation";
 import { Suspense } from "react";
 
 const ITEMS = [
-  { href: "/home", label: "Home" },
-  { href: "/pipeline", label: "Pipeline" },
-  { href: "/companies", label: "Companies" },
-  { href: "/retainers", label: "Retainers" },
+  { href: "/home", label: "Home", also: [] },
+  // A Deal opens over the Pipeline at its own route.
+  { href: "/pipeline", label: "Pipeline", also: ["/deals"] },
+  { href: "/companies", label: "Companies", also: [] },
+  { href: "/retainers", label: "Retainers", also: [] },
 ] as const;
+
+function isUnder(pathname: string, base: string) {
+  return pathname === base || pathname.startsWith(`${base}/`);
+}
 
 type NavProps = { className?: string };
 
@@ -32,7 +37,7 @@ function NavList({ className = "", pathname }: NavProps & { pathname: string | n
     <nav aria-label="Main" className={className}>
       <ul className="flex items-center gap-1 text-[14px] font-semibold">
         {ITEMS.map((item) => {
-          const active = pathname !== null && (pathname === item.href || pathname.startsWith(`${item.href}/`));
+          const active = pathname !== null && [item.href, ...item.also].some((base) => isUnder(pathname, base));
           return (
             <li key={item.href}>
               <Link

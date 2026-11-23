@@ -115,8 +115,8 @@ describe("Sandbox isolation", () => {
     expect(await theirCompanyNames()).not.toContain("Planted Co.");
   });
 
-  describe("for Contacts and Activities", () => {
-    const tables = ["contacts", "activities"] as const;
+  describe("for Contacts, Activities and Deals", () => {
+    const tables = ["contacts", "activities", "deals"] as const;
 
     async function theirRows(table: (typeof tables)[number]) {
       const { data, error } = await theirs.db.schema("crm").from(table).select("*").order("id");
@@ -124,24 +124,30 @@ describe("Sandbox isolation", () => {
       return data;
     }
 
-    it("can't read another Sandbox's Contacts or Activities", async () => {
+    it("can't read another Sandbox's Contacts, Activities or Deals", async () => {
       for (const table of tables) {
         const { data } = await mine.db.schema("crm").from(table).select("id").eq("sandbox_id", theirs.sandbox.id);
         expect(data, table).toEqual([]);
       }
     });
 
-    it("can't change another Sandbox's Contacts or Activities", async () => {
-      const before = { contacts: await theirRows("contacts"), activities: await theirRows("activities") };
+    it("can't change another Sandbox's Contacts, Activities or Deals", async () => {
+      const before = {
+        contacts: await theirRows("contacts"),
+        activities: await theirRows("activities"),
+        deals: await theirRows("deals"),
+      };
 
       await mine.db.schema("crm").from("contacts").update({ name: "Hacked" }).eq("sandbox_id", theirs.sandbox.id);
       await mine.db.schema("crm").from("activities").update({ text: "Hacked" }).eq("sandbox_id", theirs.sandbox.id);
+      await mine.db.schema("crm").from("deals").update({ title: "Hacked" }).eq("sandbox_id", theirs.sandbox.id);
 
       expect(await theirRows("contacts")).toEqual(before.contacts);
       expect(await theirRows("activities")).toEqual(before.activities);
+      expect(await theirRows("deals")).toEqual(before.deals);
     });
 
-    it("can't delete another Sandbox's Contacts or Activities", async () => {
+    it("can't delete another Sandbox's Contacts, Activities or Deals", async () => {
       for (const table of tables) {
         const before = await theirRows(table);
 
@@ -149,6 +155,44 @@ describe("Sandbox isolation", () => {
 
         expect(await theirRows(table), table).toEqual(before);
       }
+    });
+
+    it("can't link one of their own Activities to another Sandbox's Deal", async () => {
+      const [theirCompany] = await listCompanies(theirs);
+      const theirDeal = expectOk(
+        await theirs.crm.deals.create({
+          companyId: theirCompany.id,
+          ownerId: await personaId(theirs),
+          title: "Only In Their Sandbox",
+          estimatedMonthlyValue: 1000,
+        }),
+      );
+
+      const logged = await mine.crm.activities.log({
+        companyId: theirCompany.id,
+        dealId: theirDeal.id,
+        kind: "Note",
+        occurredAt: new Date(),
+        text: "Trying to reach across Sandboxes.",
+      });
+
+      expect(logged).toEqual({ ok: false, error: "deal_not_found" });
+    });
+
+    it("can't add a Deal to another Sandbox", async () => {
+      const [theirCompany] = await listCompanies(theirs);
+
+      const { error } = await mine.db.schema("crm").from("deals").insert({
+        sandbox_id: theirs.sandbox.id,
+        company_id: theirCompany.id,
+        owner_id: await personaId(theirs),
+        title: "Planted Deal",
+        estimated_monthly_value: 1,
+      });
+
+      expect(error).not.toBeNull();
+      const theirDeals = await theirs.db.schema("crm").from("deals").select("title");
+      expect(theirDeals.data!.map((row) => row.title)).not.toContain("Planted Deal");
     });
 
     it("can't link one of their own Activities to another Sandbox's Contact", async () => {

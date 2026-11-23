@@ -11,7 +11,11 @@ import {
   type CrmContext,
   type OwnerRef,
 } from "./core";
-import type { ActivityKind, CompanyStatus } from "./terms";
+import { ACTIVITY_COLUMNS, toActivity } from "./activities";
+import { CONTACT_COLUMNS, toContact } from "./contacts";
+import type { Activity } from "./activities";
+import type { Contact } from "./contacts";
+import type { CompanyStatus } from "./terms";
 
 export type CompanyListItem = {
   id: string;
@@ -21,17 +25,6 @@ export type CompanyListItem = {
   status: CompanyStatus;
   owner: OwnerRef;
   addedAt: Date;
-};
-
-export type Contact = { id: string; name: string; jobTitle: string; email: string; phone: string };
-
-export type Activity = {
-  id: string;
-  kind: ActivityKind;
-  occurredAt: Date;
-  text: string;
-  author: OwnerRef;
-  contact: { id: string; name: string } | null;
 };
 
 /** A Company with everything its page shows. */
@@ -73,32 +66,15 @@ export function companiesArea({ db, inLiveSandbox }: CrmContext) {
         if (!isId(id)) return fail("not_found");
         const [company, contacts, activities] = await Promise.all([
           db.from("companies").select(COMPANY_COLUMNS).eq("id", id).maybeSingle(),
-          db.from("contacts").select("id, name, job_title, email, phone").eq("company_id", id).order("name"),
-          db
-            .from("activities")
-            .select(`id, kind, occurred_at, text, author:teammates!inner(${OWNER_REF_COLUMNS}), contact:contacts(id, name)`)
-            .eq("company_id", id)
-            .order("occurred_at", { ascending: false }),
+          db.from("contacts").select(CONTACT_COLUMNS).eq("company_id", id).order("name"),
+          db.from("activities").select(ACTIVITY_COLUMNS).eq("company_id", id).order("occurred_at", { ascending: false }),
         ]);
         for (const { error } of [company, contacts, activities]) if (error) unexpected(error);
         if (!company.data) return fail("not_found");
         return ok<CompanyDetail>({
           ...toListItem(company.data),
-          contacts: contacts.data!.map((row) => ({
-            id: row.id,
-            name: row.name,
-            jobTitle: row.job_title,
-            email: row.email,
-            phone: row.phone,
-          })),
-          activities: activities.data!.map((row) => ({
-            id: row.id,
-            kind: row.kind,
-            occurredAt: new Date(row.occurred_at),
-            text: row.text,
-            author: toOwnerRef(row.author),
-            contact: row.contact,
-          })),
+          contacts: contacts.data!.map(toContact),
+          activities: activities.data!.map(toActivity),
         });
       }),
 
@@ -121,7 +97,7 @@ export function companiesArea({ db, inLiveSandbox }: CrmContext) {
         return data.length ? ok(undefined) : fail("not_found");
       }),
 
-    /** Deletes the Company with its Contacts and Activities. */
+    /** Deletes the Company with its Contacts, Deals and Activities. */
     delete: (id: string) =>
       inLiveSandbox(async () => {
         if (!isId(id)) return fail("not_found");
@@ -147,11 +123,15 @@ function toListItem(row: {
     name: row.name,
     industry: row.industry,
     city: row.city,
-    // Every Company is a Prospect until Retainers exist (ticket 07).
-    status: "Prospect",
+    status: companyStatus(),
     addedAt: new Date(row.added_at),
     owner: toOwnerRef(row.owner),
   };
+}
+
+/** Client or Prospect. Every Company is a Prospect until Retainers exist (ticket 07). */
+export function companyStatus(): CompanyStatus {
+  return "Prospect";
 }
 
 function toFields(input: CompanyInput) {

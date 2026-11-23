@@ -100,6 +100,14 @@ function Timeline({ company }: { company: CompanyDetail }) {
                     {" by "}
                     {fullName(activity.author)}
                     {activity.contact && <> with {activity.contact.name}</>}
+                    {activity.deal && (
+                      <>
+                        {" about "}
+                        <Link href={`/deals/${activity.deal.id}`} className="font-semibold text-primary hover:underline">
+                          {activity.deal.title}
+                        </Link>
+                      </>
+                    )}
                     {", "}
                     <RelativeTime iso={activity.occurredAt.toISOString()} />
                   </p>

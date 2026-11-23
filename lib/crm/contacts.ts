@@ -1,6 +1,14 @@
 import "server-only";
 import { clean, fail, isId, isMissingReference, ok, unexpected, type CrmContext } from "./core";
 
+export type Contact = { id: string; name: string; jobTitle: string; email: string; phone: string };
+
+export const CONTACT_COLUMNS = "id, name, job_title, email, phone";
+
+export function toContact(row: { id: string; name: string; job_title: string; email: string; phone: string }): Contact {
+  return { id: row.id, name: row.name, jobTitle: row.job_title, email: row.email, phone: row.phone };
+}
+
 /** Everything but the name is optional. An edit replaces every field. */
 export type ContactInput = { name: string; jobTitle?: string; email?: string; phone?: string };
 

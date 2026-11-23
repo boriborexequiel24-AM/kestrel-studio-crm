@@ -34,3 +34,33 @@ export function fullName(owner: { firstName: string; lastName: string }): string
 export function longDate(date: Date): string {
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
+
+const dollars = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+
+/** "$9,500". */
+export function usd(amount: number): string {
+  return dollars.format(amount);
+}
+
+/** "$9.5k", "$18k", "$800". */
+export function usdShort(amount: number): string {
+  if (amount < 1000) return dollars.format(amount);
+  const thousands = amount / 1000;
+  return `$${Number.isInteger(thousands) ? thousands : thousands.toFixed(1)}k`;
+}
+
+/** Whole days from one calendar day to another: "2026-11-24" to "2026-11-26" is 2. */
+function daysBetween(from: string, to: string): number {
+  return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / DAY);
+}
+
+/** "Due today", "Due tomorrow", "Due in 3 days", "Due Dec 3", "Overdue by 2 days". */
+export function dueLabel(due: string | null, today: string): string {
+  if (!due) return "No due date";
+  const days = daysBetween(today, due);
+  if (days < 0) return days === -1 ? "Overdue since yesterday" : `Overdue by ${-days} days`;
+  if (days === 0) return "Due today";
+  if (days === 1) return "Due tomorrow";
+  if (days < 7) return `Due in ${days} days`;
+  return `Due ${new Date(`${due}T00:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" })}`;
+}

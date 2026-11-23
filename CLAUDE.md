@@ -148,6 +148,10 @@ workflow demo.
   `app: kestrel-crm`** (decided 2026-11-24). The Supabase project is shared with other demos.
 - **The landing page's "your Sandbox was reset" notice comes from a cookie holding the expiry
   time** (decided 2026-11-24). A visitor returning the next day has no valid sign-in left to check.
+- **Next step due dates are calendar days, judged by the visitor's own time zone** (decided
+  2026-11-24). The browser sets a `tz` cookie; "Overdue" and "Due today" follow Maya's calendar.
+- **A Deal's link is `/deals/[id]`, which renders the Pipeline with the Deal open in a Sheet**
+  (decided 2026-11-24). Back, close and shared links all work without parallel routes.
 - **Every `crm` function revokes PUBLIC execute itself** (decided 2026-11-24). Postgres grants it
   by default and a per-schema default privilege can't undo that; found in review of ticket 02.
 

@@ -6,7 +6,7 @@
 -- Safe to re-run: it replaces the whole Template.
 
 -- Readable ids: Company 7 is ...00000000c007, its 2nd Contact ...0000000d0072,
--- Teammate 1 (Maya) ...0000000000a1, Activity 12 ...0000000a0012.
+-- Teammate 1 (Maya) ...0000000000a1, Deal 3 ...0000000e0003, Activity 12 ...0000000a0012.
 create function pg_temp.template() returns uuid language sql immutable
   as $$ select '00000000-0000-4000-8000-000000000000'::uuid $$;
 create function pg_temp.teammate(n int) returns uuid language sql immutable
@@ -15,6 +15,8 @@ create function pg_temp.company(n int) returns uuid language sql immutable
   as $$ select ('00000000-0000-4000-8000-00000000c' || lpad(n::text, 3, '0'))::uuid $$;
 create function pg_temp.contact(company int, n int) returns uuid language sql immutable
   as $$ select ('00000000-0000-4000-8000-0000000d' || lpad(company::text, 3, '0') || n)::uuid $$;
+create function pg_temp.deal(n int) returns uuid language sql immutable
+  as $$ select ('00000000-0000-4000-8000-0000000e' || lpad(n::text, 4, '0'))::uuid $$;
 create function pg_temp.activity(n bigint) returns uuid language sql immutable
   as $$ select ('00000000-0000-4000-8000-0000000a' || lpad(n::text, 4, '0'))::uuid $$;
 -- A moment `days` before the anchor, at `hour` UTC (US business hours are about 13 to 23 UTC).
@@ -345,6 +347,51 @@ select pg_temp.template(), pg_temp.activity(v.ord), pg_temp.company(v.company),
     (40, 2, 1, 'Email', 3, 17, 'Brianna sent their sales by site and their loyalty app numbers.')
   ) as w (company, contact, author, kind, days_ago, hour, text)) as v;
 
+-- 21 open Deals, New business, across the open Stages and every Owner. Ticket
+-- 08 adds 5 Renewals, for about 25 in all. Numbers have gaps on purpose: ids
+-- stay stable when a Deal is dropped.
+-- `due` is the Next step's due day relative to the anchor's day: below zero is
+-- overdue, 0 is due today. Each Deal starts when its Company was added.
+insert into crm.deals (sandbox_id, id, company_id, owner_id, title, kind, stage, estimated_monthly_value,
+                       next_step, next_step_due, created_at)
+select pg_temp.template(), pg_temp.deal(v.n), c.id, pg_temp.teammate(v.owner), v.title, 'New business',
+       v.stage::crm.deal_stage, v.value, v.next_step,
+       (select (created_at at time zone 'utc')::date from crm.sandboxes where is_template) + v.due,
+       c.added_at + interval '1 hour'
+  from (values
+    (1, 2, 1, 'Spring launch campaign', 'New', 9500, 'Send the intro deck and pricing to Rhoda', 1),
+    (2, 3, 3, 'Test ride bookings: search and social', 'Qualified', 6000, 'Get budget numbers from Dana', -2),
+    (3, 5, 4, 'Subscription growth and Amazon ads', 'Discovery', 8500, 'Audit their Amazon ad account', 3),
+    (4, 6, 3, 'Brand and performance retainer', 'Proposal sent', 14000, 'Follow up with Owen on the proposal', 0),
+    (5, 7, 5, 'Patient growth campaign', 'Negotiation', 12000, 'Send Leah our compliance review process', -1),
+    (7, 19, 2, 'Grocery launch across Oregon', 'Qualified', 7500, 'Map the retailer calendar with Cal', 6),
+    (8, 20, 1, 'Weeknight covers and private events', 'Proposal sent', 5500, 'Call Etienne about the proposal', -4),
+    (9, 21, 3, 'Lead generation website and search', 'Negotiation', 4800, 'Nudge Frank on the revised scope', -9),
+    (10, 22, 5, 'January enrollment campaign', 'Discovery', 9000, 'Send Darnell a rough budget', 2),
+    (11, 23, 4, 'Holiday ads sprint', 'New', 3500, 'Confirm a start date with Willa', 1),
+    (12, 24, 1, 'Shopper marketing for two grocery chains', 'Discovery', 10500, 'Draft the Q1 reset plan with Megan', 4),
+    (14, 26, 2, 'Fort Lauderdale launch', 'Qualified', 13000, 'Send Mateo the launch plan outline', -1),
+    (15, 27, 5, 'Cosmetic services campaign', 'Proposal sent', 9500, 'Walk Chase through the proposal', 2),
+    (16, 28, 4, 'January membership drive', 'New', 4000, 'Book a gym visit with Bo', 2),
+    (17, 29, 1, 'Brand refresh for bigger projects', 'Negotiation', 6500, 'Agree a start date with Vivian', 3),
+    (18, 30, 3, 'March product launch', 'Qualified', 15000, 'Positioning workshop with Sanjay and Erin', 7),
+    (20, 32, 4, 'Off-season dining campaign', 'Discovery', 4500, 'Send Colin the winter promo ideas', -6),
+    (21, 33, 3, 'Lower cost per install', 'Proposal sent', 16000, 'Present the proposal to Raj and Kristen', 1),
+    (24, 37, 3, 'Associate recruiting and brand', 'Negotiation', 7000, 'Send Daniel our references', -3),
+    (25, 38, 4, 'Apparel ecommerce growth', 'New', 5500, 'Intro call with Jesse and Sky', 2),
+    (26, 40, 1, 'One agency for all 10 sites', 'Qualified', 18000, 'Collect site-level sales from Brianna', 1)
+  ) as v (n, company, owner, title, stage, value, next_step, due)
+  join crm.companies c on c.sandbox_id = pg_temp.template() and c.id = pg_temp.company(v.company);
+
+-- A Prospect's Activities so far are all about its one Deal. Companies 1, 4
+-- and 8 to 17 become Clients in ticket 07: their Activities are ongoing work,
+-- not about a Deal.
+update crm.activities a
+   set deal_id = d.id
+  from crm.deals d
+ where a.sandbox_id = pg_temp.template() and d.sandbox_id = a.sandbox_id and d.company_id = a.company_id
+   and d.company_id not in (select pg_temp.company(n) from unnest(array[1, 4, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]) as n);
+
 -- Every sample date must be before the anchor, or a fresh Sandbox would show
 -- Activities in the future. Refuse to load a Template that breaks this.
 do $$
@@ -355,6 +402,9 @@ begin
   ) or exists (
     select 1 from crm.companies c join crm.sandboxes t on t.id = c.sandbox_id
      where t.is_template and c.added_at > t.created_at
+  ) or exists (
+    select 1 from crm.deals d join crm.sandboxes t on t.id = d.sandbox_id
+     where t.is_template and d.created_at > t.created_at
   ) then
     raise exception 'A Template date is after the anchor, so it would show in the future.';
   end if;

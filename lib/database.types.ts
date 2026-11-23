@@ -7,14 +7,14 @@ export type Database = {
           Tables: {
             "activities": {
                   Row: {
-                    "author_id": string,"company_id": string,"contact_id": string | null,"id": string,"kind": Database["crm"]['Enums']["activity_kind"],"occurred_at": string,"sandbox_id": string,"text": string
+                    "author_id": string,"company_id": string,"contact_id": string | null,"deal_id": string | null,"id": string,"kind": Database["crm"]['Enums']["activity_kind"],"occurred_at": string,"sandbox_id": string,"text": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "author_id": string,"company_id": string,"contact_id"?: string | null,"id"?: string,"kind": Database["crm"]['Enums']["activity_kind"],"occurred_at"?: string,"sandbox_id"?: string,"text": string
+                    "author_id": string,"company_id": string,"contact_id"?: string | null,"deal_id"?: string | null,"id"?: string,"kind": Database["crm"]['Enums']["activity_kind"],"occurred_at"?: string,"sandbox_id"?: string,"text": string
                   }
                   Update: {
-                    "author_id"?: string,"company_id"?: string,"contact_id"?: string | null,"id"?: string,"kind"?: Database["crm"]['Enums']["activity_kind"],"occurred_at"?: string,"sandbox_id"?: string,"text"?: string
+                    "author_id"?: string,"company_id"?: string,"contact_id"?: string | null,"deal_id"?: string | null,"id"?: string,"kind"?: Database["crm"]['Enums']["activity_kind"],"occurred_at"?: string,"sandbox_id"?: string,"text"?: string
                   }
                   Relationships: [
                     {
@@ -22,6 +22,12 @@ export type Database = {
       columns: ["sandbox_id","company_id","contact_id"]
 isOneToOne: false
       referencedRelation: "contacts"
+      referencedColumns: ["sandbox_id","company_id","id"]
+    },{
+      foreignKeyName: "activities_deal_at_company"
+      columns: ["sandbox_id","company_id","deal_id"]
+isOneToOne: false
+      referencedRelation: "deals"
       referencedColumns: ["sandbox_id","company_id","id"]
     },{
       foreignKeyName: "activities_sandbox_id_author_id_fkey"
@@ -93,6 +99,38 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "sandboxes"
       referencedColumns: ["id"]
+    }
+                  ]
+                },"deals": {
+                  Row: {
+                    "company_id": string,"created_at": string,"estimated_monthly_value": number,"id": string,"kind": Database["crm"]['Enums']["deal_kind"],"next_step": string,"next_step_due": string | null,"owner_id": string,"sandbox_id": string,"stage": Database["crm"]['Enums']["deal_stage"],"title": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "company_id": string,"created_at"?: string,"estimated_monthly_value": number,"id"?: string,"kind"?: Database["crm"]['Enums']["deal_kind"],"next_step"?: string,"next_step_due"?: string | null,"owner_id": string,"sandbox_id"?: string,"stage"?: Database["crm"]['Enums']["deal_stage"],"title": string
+                  }
+                  Update: {
+                    "company_id"?: string,"created_at"?: string,"estimated_monthly_value"?: number,"id"?: string,"kind"?: Database["crm"]['Enums']["deal_kind"],"next_step"?: string,"next_step_due"?: string | null,"owner_id"?: string,"sandbox_id"?: string,"stage"?: Database["crm"]['Enums']["deal_stage"],"title"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "deals_sandbox_id_company_id_fkey"
+      columns: ["sandbox_id","company_id"]
+isOneToOne: false
+      referencedRelation: "companies"
+      referencedColumns: ["sandbox_id","id"]
+    },{
+      foreignKeyName: "deals_sandbox_id_fkey"
+      columns: ["sandbox_id"]
+isOneToOne: false
+      referencedRelation: "sandboxes"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "deals_sandbox_id_owner_id_fkey"
+      columns: ["sandbox_id","owner_id"]
+isOneToOne: false
+      referencedRelation: "teammates"
+      referencedColumns: ["sandbox_id","id"]
     }
                   ]
                 },"sandbox_openings": {
@@ -182,7 +220,7 @@ isOneToOne: false
                            }
           }
           Enums: {
-            "activity_kind": "Email"|"Call"|"Meeting"|"Note"
+            "activity_kind": "Email"|"Call"|"Meeting"|"Note","deal_kind": "New business"|"Renewal","deal_stage": "New"|"Qualified"|"Discovery"|"Proposal sent"|"Negotiation"|"Won"|"Lost"
           }
           CompositeTypes: {
             [_ in never]: never
@@ -298,7 +336,7 @@ export type CompositeTypes<
 export const Constants = {
   "crm": {
           Enums: {
-            "activity_kind": ["Email", "Call", "Meeting", "Note"]
+            "activity_kind": ["Email", "Call", "Meeting", "Note"],"deal_kind": ["New business", "Renewal"],"deal_stage": ["New", "Qualified", "Discovery", "Proposal sent", "Negotiation", "Won", "Lost"]
           }
         }
 } as const

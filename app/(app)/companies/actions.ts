@@ -1,37 +1,10 @@
 "use server";
 
-import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
-import type { ActivityKind, NoLiveSandbox, Result } from "@/lib/crm";
+import type { ActivityKind } from "@/lib/crm";
 import { getCrm } from "@/lib/crm/server";
 import type { FormState } from "@/components/forms/form-state";
-
-// What each rule the CRM module can report means to Maya, and which field it belongs to.
-const MESSAGES: Record<string, { message: string; field?: string }> = {
-  name_required: { message: "Add a name.", field: "name" },
-  owner_not_found: { message: "Pick an Owner from the team.", field: "ownerId" },
-  not_found: { message: "This record no longer exists. Reload the page." },
-  company_not_found: { message: "This Company no longer exists. Reload the page." },
-  contact_not_found: { message: "That Contact doesn't work at this Company.", field: "contactId" },
-  text_required: { message: "Write what happened.", field: "text" },
-  kind_unknown: { message: "Pick Email, Call, Meeting or Note.", field: "kind" },
-  date_required: { message: "Pick a date.", field: "date" },
-  date_in_future: { message: "An Activity can't be dated in the future.", field: "date" },
-};
-
-/** Turns a CRM result into form state; a lost Sandbox goes back to the landing page. */
-function toFormState<E extends string>(result: Result<unknown, E | NoLiveSandbox>, form: FormData): FormState {
-  if (result.ok) {
-    refresh();
-    return { status: "saved", at: Date.now() };
-  }
-  if (result.error === "no_sandbox" || result.error === "sandbox_expired") redirect("/");
-  const known = MESSAGES[result.error] ?? { message: "Something went wrong. Try again." };
-  const values = Object.fromEntries([...form].map(([name, value]) => [name, String(value)]));
-  return { status: "error", ...known, values, at: Date.now() };
-}
-
-const text = (form: FormData, name: string) => String(form.get(name) ?? "");
+import { formText as text, toFormState } from "@/lib/form-results";
 
 function companyFields(form: FormData) {
   return {
@@ -92,7 +65,14 @@ function activityFields(form: FormData) {
 
 export async function logActivity(_state: FormState, form: FormData): Promise<FormState> {
   const crm = await getCrm();
-  return toFormState(await crm.activities.log({ ...activityFields(form), companyId: text(form, "companyId") }), form);
+  return toFormState(
+    await crm.activities.log({
+      ...activityFields(form),
+      companyId: text(form, "companyId"),
+      dealId: text(form, "dealId") || null,
+    }),
+    form,
+  );
 }
 
 export async function updateActivity(_state: FormState, form: FormData): Promise<FormState> {

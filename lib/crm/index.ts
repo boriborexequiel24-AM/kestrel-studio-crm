@@ -3,6 +3,7 @@ import type { AiProvider } from "@/lib/ai/provider";
 import { activitiesArea } from "./activities";
 import { companiesArea } from "./companies";
 import { contactsArea } from "./contacts";
+import { dealsArea, pipelineArea } from "./deals";
 import type { CrmContext, CrmSupabaseClient } from "./core";
 import { sandboxArea, type SandboxLimits } from "./sandbox";
 import { teamArea } from "./team";
@@ -16,15 +17,27 @@ import { teamArea } from "./team";
 export type { CrmSupabaseClient, NoLiveSandbox, OwnerRef, Result } from "./core";
 export type { SandboxInfo, SandboxLimits, SandboxStatus } from "./sandbox";
 export type { Owner } from "./team";
+export type { Activity } from "./activities";
+export type { Contact } from "./contacts";
+export type { Day, DealCard, DealDetail, DealInput, NextStep, PipelineBoard } from "./deals";
 export type {
-  Activity,
   CompanyDetail,
   CompanyFilter,
   CompanyInput,
   CompanyListItem,
-  Contact,
 } from "./companies";
-export { ACTIVITY_KINDS, COMPANY_STATUSES, type ActivityKind, type CompanyStatus } from "./terms";
+export {
+  ACTIVITY_KINDS,
+  COMPANY_STATUSES,
+  DEAL_STAGES,
+  OPEN_STAGES,
+  isOpenStage,
+  type ActivityKind,
+  type CompanyStatus,
+  type DealKind,
+  type DealStage,
+  type OpenStage,
+} from "./terms";
 export type { ContactInput } from "./contacts";
 export type { ActivityFields, ActivityInput } from "./activities";
 
@@ -41,6 +54,8 @@ export function createCrm(supabase: CrmSupabaseClient, deps: CrmDeps) {
     companies: companiesArea(context),
     contacts: contactsArea(context),
     activities: activitiesArea(context),
+    deals: dealsArea(context),
+    pipeline: pipelineArea(context),
   };
 }
 

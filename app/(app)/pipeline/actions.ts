@@ -1,0 +1,56 @@
+"use server";
+
+import { redirect } from "next/navigation";
+import type { FormState } from "@/components/forms/form-state";
+import type { DealStage } from "@/lib/crm";
+import { getCrm } from "@/lib/crm/server";
+import { formText as text, toFormState } from "@/lib/form-results";
+
+/** Keeps the Pipeline's Mine / Everyone choice across a redirect. */
+function mineQuery(form: FormData) {
+  return text(form, "mine") === "1" ? "?mine=1" : "";
+}
+
+function dealFields(form: FormData) {
+  const value = text(form, "estimatedMonthlyValue").trim();
+  return {
+    companyId: text(form, "companyId"),
+    ownerId: text(form, "ownerId"),
+    title: text(form, "title"),
+    estimatedMonthlyValue: value === "" ? Number.NaN : Number(value),
+    nextStep: text(form, "nextStep"),
+    nextStepDue: text(form, "nextStepDue") || null,
+  };
+}
+
+export async function createDeal(_state: FormState, form: FormData): Promise<FormState> {
+  const crm = await getCrm();
+  const created = await crm.deals.create(dealFields(form));
+  if (created.ok) redirect(`/deals/${created.value.id}${mineQuery(form)}`);
+  return toFormState(created, form);
+}
+
+export async function updateDeal(_state: FormState, form: FormData): Promise<FormState> {
+  const crm = await getCrm();
+  return toFormState(await crm.deals.update(text(form, "dealId"), dealFields(form)), form);
+}
+
+export async function deleteDeal(_state: FormState, form: FormData): Promise<FormState> {
+  const crm = await getCrm();
+  const deleted = await crm.deals.delete(text(form, "dealId"));
+  if (deleted.ok || deleted.error === "not_found") redirect(`/pipeline${mineQuery(form)}`);
+  return toFormState(deleted, form);
+}
+
+export async function moveDeal(_state: FormState, form: FormData): Promise<FormState> {
+  const crm = await getCrm();
+  return toFormState(await crm.deals.moveToStage(text(form, "dealId"), text(form, "stage") as DealStage), form);
+}
+
+export async function setNextStep(_state: FormState, form: FormData): Promise<FormState> {
+  const crm = await getCrm();
+  return toFormState(
+    await crm.deals.setNextStep(text(form, "dealId"), { text: text(form, "nextStep"), due: text(form, "nextStepDue") || null }),
+    form,
+  );
+}
