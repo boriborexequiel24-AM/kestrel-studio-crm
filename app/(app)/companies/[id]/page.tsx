@@ -6,7 +6,7 @@ import { ChevronLeft } from "lucide-react";
 import { ACTIVITY_KIND_ICON } from "@/components/companies/activity-kind";
 import { DeleteCompanyButton, EditCompanyButton } from "@/components/companies/company-forms";
 import { AddContactButton, ContactActions } from "@/components/companies/contact-forms";
-import { LogActivityButton } from "@/components/companies/log-activity";
+import { ActivityActions, LogActivityButton } from "@/components/companies/activity-forms";
 import { ownerOptions } from "@/components/companies/owner-options";
 import { StatusChip } from "@/components/companies/status-chip";
 import type { CompanyDetail } from "@/lib/crm";
@@ -72,13 +72,14 @@ async function CompanyView({ params }: { params: Promise<{ id: string }> }) {
 }
 
 function Timeline({ company }: { company: CompanyDetail }) {
+  const contacts = company.contacts.map(({ id, name }) => ({ id, name }));
   return (
     <section aria-labelledby="activity-heading" className="rounded-xl border border-border bg-card">
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-3">
         <h2 id="activity-heading" className="text-[16px] font-bold">
           Activity <span className="font-semibold text-muted-foreground">({company.activities.length})</span>
         </h2>
-        <LogActivityButton companyId={company.id} contacts={company.contacts.map(({ id, name }) => ({ id, name }))} />
+        <LogActivityButton companyId={company.id} contacts={contacts} />
       </header>
       {company.activities.length === 0 ? (
         <p className="px-5 py-8 text-center text-muted-foreground">No Activity yet. Log the first one.</p>
@@ -91,7 +92,7 @@ function Timeline({ company }: { company: CompanyDetail }) {
                 <span className="mt-0.5 grid size-9 shrink-0 place-items-center rounded-full bg-tint text-primary" aria-hidden>
                   <Icon className="size-4" />
                 </span>
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <p className="text-[13px] text-muted-foreground">
                     <span className="font-semibold text-foreground">{activity.kind}</span>
                     {" by "}
@@ -102,6 +103,16 @@ function Timeline({ company }: { company: CompanyDetail }) {
                   </p>
                   <p className="mt-1 whitespace-pre-line">{activity.text}</p>
                 </div>
+                <ActivityActions
+                  contacts={contacts}
+                  activity={{
+                    id: activity.id,
+                    kind: activity.kind,
+                    occurredAt: activity.occurredAt.toISOString(),
+                    contactId: activity.contact?.id ?? null,
+                    text: activity.text,
+                  }}
+                />
               </li>
             );
           })}

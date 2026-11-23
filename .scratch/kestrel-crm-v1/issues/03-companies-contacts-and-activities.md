@@ -20,7 +20,7 @@
 
 Fixed after review: "when" labels count calendar days in the visitor's own time zone (they were off by a day for some zones); the dialog close button is a 44px target; the Template seed refuses any date after the anchor; the cross-Sandbox Contact test uses a Contact only the other Sandbox has.
 
-Open: the 2026-11-22 decision says visitors can edit Activities, but this ticket only asks to log them. Editing and deleting an Activity is not built yet.
+Added after review: Activities can be edited (kind, date, Contact, text; Company and author stay) and deleted from the timeline, as the 2026-11-22 decision says visitors can edit Activities. 49 tests.
 
 Notes for later tickets:
 - Name check (2026-11-24, web searches): 9 names clashed with real businesses and were replaced (Peregrine Dental, Kettle Point Snacks, Bellweather Property, Alder & Ash Interiors, Glasswing Software, Moorcroft Pharmacy, Bluefen Seafood, Lowtide Surf, Cinderhouse Pizza). "Kestrel Studio" has a soft clash with Studio Kestrel, an NYC interior design firm; the name is kept per the 2026-11-22 decision.

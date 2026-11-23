@@ -26,7 +26,7 @@ export type {
 } from "./companies";
 export { ACTIVITY_KINDS, COMPANY_STATUSES, type ActivityKind, type CompanyStatus } from "./terms";
 export type { ContactInput } from "./contacts";
-export type { ActivityInput } from "./activities";
+export type { ActivityFields, ActivityInput } from "./activities";
 
 export type CrmDeps = { ai?: AiProvider };
 

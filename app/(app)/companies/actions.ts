@@ -79,18 +79,28 @@ export async function deleteContact(_state: FormState, form: FormData): Promise<
   return toFormState(await crm.contacts.delete(text(form, "contactId")), form);
 }
 
+function activityFields(form: FormData) {
+  // The browser sends "now" for today, or a moment in the visitor's time zone.
+  const when = text(form, "occurredAt");
+  return {
+    contactId: text(form, "contactId") || null,
+    kind: text(form, "kind") as ActivityKind,
+    occurredAt: when === "now" ? new Date() : new Date(when),
+    text: text(form, "text"),
+  };
+}
+
 export async function logActivity(_state: FormState, form: FormData): Promise<FormState> {
   const crm = await getCrm();
-  // The browser sends "now" for today, or noon on the chosen day in the visitor's time zone.
-  const when = text(form, "occurredAt");
-  return toFormState(
-    await crm.activities.log({
-      companyId: text(form, "companyId"),
-      contactId: text(form, "contactId") || null,
-      kind: text(form, "kind") as ActivityKind,
-      occurredAt: when === "now" ? new Date() : new Date(when),
-      text: text(form, "text"),
-    }),
-    form,
-  );
+  return toFormState(await crm.activities.log({ ...activityFields(form), companyId: text(form, "companyId") }), form);
+}
+
+export async function updateActivity(_state: FormState, form: FormData): Promise<FormState> {
+  const crm = await getCrm();
+  return toFormState(await crm.activities.update(text(form, "activityId"), activityFields(form)), form);
+}
+
+export async function deleteActivity(_state: FormState, form: FormData): Promise<FormState> {
+  const crm = await getCrm();
+  return toFormState(await crm.activities.delete(text(form, "activityId")), form);
 }
