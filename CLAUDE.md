@@ -109,9 +109,23 @@ workflow demo.
 - **Public GitHub repo once v1 works; local until then** (decided 2026-11-22). The code is the
   point, so prospects should be able to read it.
 - **Deploy on Vercel at a `.vercel.app` address** (decided 2026-11-22). Custom domain later.
+- **Look: Variant H "Sales desk", flat Swiss minimalism, professional blue, Plus Jakarta Sans**
+  (decided 2026-11-23). Shows the whole agency at a glance, a Deal opens beside the board so a
+  tour never loses its place, and it passed the accessibility checks. Prototype on branch
+  `prototype/pipeline-deal-look`; logo is still a placeholder.
+- **Deal cards show the Next step text on one line** (decided 2026-11-23). The board is about
+  what happens next.
+- **Won and Lost stay off the board; an Open / Closed switch shows them in a table**
+  (decided 2026-11-23). Keeps the grid about live work while still showing Lost reasons.
+- **Below ~1060px the Pipeline shows one Stage at a time with Stage tabs** (decided 2026-11-23).
+  The Owner x Stage grid doesn't fit a phone.
+- **One test seam: the server-side CRM module, against a local Supabase in Docker, with a fake
+  AI provider** (decided 2026-11-23). Tests real RLS and auth without touching the shared live
+  project. No automated UI tests in v1.
+- **v1 spec written** (2026-11-23): `.scratch/kestrel-crm-v1/spec.md`.
 
 ## Open questions
-- Branding (colors, logo, overall feel) for Kestrel Studio: to settle in the prototype.
+- A proper logo mark (the prototype's is a placeholder).
 - Project name (folder is still `Big Test`).
 
 ## Tech stack
