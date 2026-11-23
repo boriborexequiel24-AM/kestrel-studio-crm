@@ -1,0 +1,122 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+/*
+ * Variant H "Sales desk" (see the v1 spec, "Look"): flat Swiss minimalism,
+ * professional blue, Plus Jakarta Sans. Light mode only. No gradients or
+ * shadows except the Sheet edge; hovers are a 150 to 200ms color or border shift.
+ */
+
+@theme inline {
+  --font-sans: var(--font-jakarta);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-won: var(--won);
+  --color-won-hover: var(--won-hover);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-persona: var(--persona);
+
+  /* Blue tints: active nav, selected card, AI summary. */
+  --color-tint: var(--tint);
+  --color-tint-soft: var(--tint-soft);
+  --color-tint-faint: var(--tint-faint);
+
+  /* Stage colors. Always shown together with the Stage name. */
+  --color-stage-new: var(--stage-new);
+  --color-stage-qualified: var(--stage-qualified);
+  --color-stage-discovery: var(--stage-discovery);
+  --color-stage-proposal-sent: var(--stage-proposal-sent);
+  --color-stage-negotiation: var(--stage-negotiation);
+  --color-stage-won: var(--stage-won);
+  --color-stage-lost: var(--stage-lost);
+
+  /* Cards and panels 12px, controls and chips 8px. */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-2xl: 12px;
+}
+
+:root {
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+  --popover: #ffffff;
+  --popover-foreground: #0f172a;
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --primary-foreground: #ffffff;
+  --secondary: #f1f5fd;
+  --secondary-foreground: #0f172a;
+  --muted: #f1f5fd;
+  --muted-foreground: #475569;
+  --accent: #f1f5fd;
+  --accent-foreground: #0f172a;
+  --destructive: #dc2626;
+  --won: #059669;
+  --won-hover: #047857;
+  --border: #e4ecfc;
+  --input: #cbd5e1;
+  --ring: #2563eb;
+  --persona: #0f172a;
+
+  --tint: #eff4ff;
+  --tint-soft: #f5f8ff;
+  --tint-faint: #f8faff;
+
+  --stage-new: #64748b;
+  --stage-qualified: #0284c7;
+  --stage-discovery: #2563eb;
+  --stage-proposal-sent: #d97706;
+  --stage-negotiation: #ea580c;
+  --stage-won: #059669;
+  --stage-lost: #dc2626;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html {
+    /* Focus never hides under the 64px sticky top bar. */
+    scroll-padding-top: 80px;
+  }
+  body {
+    @apply bg-background font-sans text-[14px] text-foreground;
+  }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+}

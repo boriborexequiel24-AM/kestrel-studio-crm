@@ -14,3 +14,15 @@ build/
 *.log
 .DS_Store
 Thumbs.db
+
+# Next.js and TypeScript
+next-env.d.ts
+*.tsbuildinfo
+/coverage
+
+# Supabase CLI working files
+supabase/.temp/
+supabase/.branches/
+
+# Leftovers from checking out the prototype branch (never merged into main)
+/prototype/

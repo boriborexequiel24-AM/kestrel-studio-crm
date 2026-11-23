@@ -123,22 +123,53 @@ workflow demo.
   AI provider** (decided 2026-11-23). Tests real RLS and auth without touching the shared live
   project. No automated UI tests in v1.
 - **v1 spec written** (2026-11-23): `.scratch/kestrel-crm-v1/spec.md`.
+- **The Template is a reserved Sandbox row (`is_template`), not separate tables** (decided
+  2026-11-24). Every table gets Template support for free; building is one copy per table.
+- **Sandbox-owned tables key on `(sandbox_id, id)`, with foreign keys that include `sandbox_id`**
+  (decided 2026-11-24). Copies keep the Template's ids, and no row can point into another Sandbox.
+- **Keep Next.js Cache Components on; the CRM module waits for a real request (`connection()`)**
+  (decided 2026-11-24). Frames prerender; per-visitor data streams in behind Suspense.
+- **Tests read local keys from `supabase status`, never `.env`, and refuse a non-local URL**
+  (decided 2026-11-24). A `.env` pointing at the live project can't leak into a test run.
+- **"Built by Zeki" links to https://workwithbori.cloud for now** (decided 2026-11-24). The new
+  portfolio in `../Automations/` isn't live yet; switch the link when it is.
+- **Every `crm` function revokes PUBLIC execute itself** (decided 2026-11-24). Postgres grants it
+  by default and a per-schema default privilege can't undo that; found in review of ticket 02.
 
 ## Open questions
 - A proper logo mark (the prototype's is a placeholder).
 - Project name (folder is still `Big Test`).
 
 ## Tech stack
-- **App:** Next.js + Tailwind CSS, deployed on Vercel
-- **Database and auth:** Supabase
-- **AI:** OpenAI API
-- Versions and commands: TBD once the app is scaffolded.
+- **App:** Next.js 16.4 (App Router, Turbopack, Cache Components), React 19, Tailwind v4,
+  shadcn/ui (Radix), lucide icons. Deployed on Vercel.
+- **Database and auth:** Supabase (`@supabase/ssr`), local stack via Supabase CLI 3.3 in Docker.
+- **AI:** OpenAI API behind `lib/ai` (fake provider for tests and local dev).
+- **Tests:** Vitest 5 against the local Supabase stack.
+- Next.js 16 differs from older versions: read `AGENTS.md` and `node_modules/next/dist/docs/`.
 
 ## Structure
-_TBD: main folders and files, once they exist._
+- `app/` : routes. `page.tsx` is the landing page; `(app)/` holds the signed-in screens and the
+  app frame layout; `actions.ts` has "Open the demo".
+- `components/app/` : app frame (top bar, nav, logo, page header). `components/ui/` : shadcn.
+- `lib/crm/` : the CRM module, the one seam for data (`index.ts`), and `server.ts` to get it in
+  a request (`getCrm`, `requireLiveSandbox`).
+- `lib/ai/` : AI provider interface, fake provider, `AI_PROVIDER` switch.
+- `lib/supabase/` : the visitor's cookie-based Supabase client.
+- `lib/database.types.ts` : generated from the local database (`npm run db:types`).
+- `proxy.ts` : refreshes the Supabase session on each request.
+- `supabase/migrations/` : the `crm` schema. `supabase/seeds/template.sql` : the Template.
+- `tests/` : CRM module tests; `tests/support/` has the visitor helpers.
 
 ## Commands
-_TBD: how to run, build, and test._
+- `npm run db:start` / `npm run db:stop` : local Supabase stack (Docker Desktop must be running).
+- `npm run db:reset` : rebuild the local database from migrations and the Template seed.
+- `npm run db:types` : regenerate `lib/database.types.ts` after a migration.
+- `npm run dev` : app on http://localhost:3000 (needs `.env`, see `.env.example`).
+- `npm test` : all tests (needs the local stack running). `npx vitest run tests/<file>` for one.
+- `npm run typecheck`, `npm run lint`, `npm run build`.
+- Local `supabase/config.toml` keeps analytics off: on Windows it needs Docker's daemon on
+  unencrypted TCP.
 
 ## Conventions
 - Only fake sample data. Never commit secrets; use `.env` and `.env.example`.
