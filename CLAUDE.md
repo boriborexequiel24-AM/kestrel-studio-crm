@@ -131,8 +131,8 @@ workflow demo.
   (decided 2026-11-24). Frames prerender; per-visitor data streams in behind Suspense.
 - **Tests read local keys from `supabase status`, never `.env`, and refuse a non-local URL**
   (decided 2026-11-24). A `.env` pointing at the live project can't leak into a test run.
-- **"Built by Zeki" links to https://workwithbori.cloud for now** (decided 2026-11-24). The new
-  portfolio in `../Automations/` isn't live yet; switch the link when it is.
+- **"Built by Zeki" links to https://workwithzeki.vercel.app** (decided 2026-11-24). The new
+  portfolio is live there; workwithbori.cloud still shows the old one.
 - **Template Company names were web-checked; 9 clashing names replaced** (decided 2026-11-24).
   Public demo, so no real business should appear in it. Details in ticket 03's comment.
 - **Companies text filter runs in the CRM module, not as a database pattern** (decided

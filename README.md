@@ -78,4 +78,4 @@ Set `AI_PROVIDER=fake` in `.env` to run without an OpenAI key. `npm test` runs t
 | `tests/` | The tests |
 | `docs/` | Decisions (ADRs); the terms used are in [GLOSSARY.md](GLOSSARY.md) |
 
-Built by [Zeki](https://workwithbori.cloud). Kestrel Studio is fictional.
+Built by [Zeki](https://workwithzeki.vercel.app). Kestrel Studio is fictional.
