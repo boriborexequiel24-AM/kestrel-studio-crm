@@ -163,6 +163,21 @@ workflow demo.
   2026-11-24). A typo can't overflow the database.
 - **Every `crm` function revokes PUBLIC execute itself** (decided 2026-11-24). Postgres grants it
   by default and a per-schema default privilege can't undo that; found in review of ticket 02.
+- **Won is final: a Won Deal can't change Stage, be deleted or take another Proposal** (decided
+  2026-11-24). Its Retainer keeps the Deal as its history. Deleting the Company deletes all of it.
+- **Winning is one database function; visitors can't set Won or Accepted or add a Retainer directly**
+  (decided 2026-11-24). Triggers hold it even against a direct API call.
+- **The win confirm names a Proposal version, and any other is refused** (decided 2026-11-24). Won is
+  final, so a stale tab must not accept an offer nobody looked at.
+- **A Retainer runs through its end date, in the visitor's calendar; "Ends soon" is still active**
+  (decided 2026-11-24). A Company is a Client through that last day.
+- **Won this month goes by the visitor's own day and month (`closed_on`)** (decided 2026-11-24). One
+  sample Deal of Maya's is always won today, so it's never empty.
+- **Sample end dates come from the Proposal's term when a Sandbox is built** (decided 2026-11-24).
+  Months differ in length, so shifting both dates drifted from the term.
+- **A Proposal's monthly total is capped at $10 million too** (decided 2026-11-24). It becomes the
+  Retainer's fee.
+- **A Retainer keeps the Owner it was won with** (decided 2026-11-24). Only its end date can change.
 
 ## Open questions
 - A proper logo mark (the prototype's is a placeholder).

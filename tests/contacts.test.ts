@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { utcDay } from "./support/days";
 import { expectOk } from "./support/results";
 import { sampleCompany } from "./support/sample";
 import { visitorWithSandbox } from "./support/visitors";
@@ -12,7 +13,7 @@ describe("a Company's Contacts", () => {
       await crm.contacts.create(company.id, { name: " Imogen Faraday ", jobTitle: "Head of Growth", email: "imogen@example.com" }),
     );
 
-    const contacts = expectOk(await crm.companies.get(company.id)).contacts;
+    const contacts = expectOk(await crm.companies.get(company.id, { today: utcDay() })).contacts;
     expect(contacts).toContainEqual({ id: added.id, name: "Imogen Faraday", jobTitle: "Head of Growth", email: "imogen@example.com", phone: "" });
   });
 
@@ -40,7 +41,7 @@ describe("a Company's Contacts", () => {
     const updated = await crm.contacts.update(contact.id, { name: "Rosa Delgado-Park", jobTitle: "VP Marketing", phone: "(206) 555-0199" });
 
     expect(updated.ok).toBe(true);
-    expect(expectOk(await crm.companies.get(company.id)).contacts).toContainEqual({
+    expect(expectOk(await crm.companies.get(company.id, { today: utcDay() })).contacts).toContainEqual({
       id: contact.id,
       name: "Rosa Delgado-Park",
       jobTitle: "VP Marketing",
@@ -61,7 +62,7 @@ describe("a Company's Contacts", () => {
 
     expect(await crm.contacts.delete(contact.id)).toEqual({ ok: true, value: undefined });
 
-    const after = expectOk(await crm.companies.get(company.id));
+    const after = expectOk(await crm.companies.get(company.id, { today: utcDay() }));
     expect(after.contacts.map((c) => c.id)).not.toContain(contact.id);
     for (const id of theirActivities) {
       expect(after.activities.find((activity) => activity.id === id)?.contact).toBeNull();

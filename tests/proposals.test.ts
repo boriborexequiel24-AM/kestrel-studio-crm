@@ -1,20 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { ProposalInput } from "@/lib/crm";
 import { utcDay } from "./support/days";
-import { getDeal, newDeal } from "./support/deals";
+import { OFFER, getDeal, newDeal } from "./support/deals";
 import { expectOk } from "./support/results";
 import { personaId, sampleCompany } from "./support/sample";
 import { visitorWithSandbox } from "./support/visitors";
-
-/** $4,200 + $2,600 = $6,800 a month. */
-const OFFER: ProposalInput = {
-  scopeSummary: "Paid social and creative for the spring launch.",
-  termMonths: 6,
-  lineItems: [
-    { service: "Paid social", monthlyFee: 4200 },
-    { service: "Creative production", monthlyFee: 2600 },
-  ],
-};
 
 describe("the sample Proposals", () => {
   it("give every Deal in Proposal sent and Negotiation a live offer, sent recently", async () => {
@@ -27,7 +17,7 @@ describe("the sample Proposals", () => {
     expect(deals).toHaveLength(8);
     for (const deal of deals) {
       const sent = deal.proposals.find((proposal) => proposal.status === "Sent")!;
-      expect(deal.sentProposalVersion).toBe(sent.version);
+      expect(deal.proposal).toEqual({ version: sent.version, status: "Sent" });
       expect(deal.monthlyValue).toBe(sent.lineItems.reduce((total, item) => total + item.monthlyFee, 0));
       const daysAgo = (Date.now() - sent.sentAt!.getTime()) / (24 * 60 * 60 * 1000);
       expect(daysAgo).toBeGreaterThan(0);
@@ -128,6 +118,8 @@ describe("drafting a Proposal", () => {
     for (const fee of [-1, 10.5, Number.NaN, 99_999_999_999]) {
       expect(await draft(item("Search", fee))).toEqual({ ok: false, error: "fee_invalid" });
     }
+    const tooMuch = { lineItems: [1, 2].map((n) => ({ service: `Part ${n}`, monthlyFee: 6_000_000 })) };
+    expect(await draft(tooMuch)).toEqual({ ok: false, error: "total_too_large" });
     expect((await getDeal(crm, deal.id)).proposals).toEqual([]);
   });
 
@@ -156,12 +148,12 @@ describe("sending a Proposal", () => {
     const { crm } = await visitorWithSandbox();
     const deal = await newDeal(crm);
     const draft = expectOk(await crm.proposals.createDraft(deal.id, OFFER));
-    expect(await getDeal(crm, deal.id)).toMatchObject({ monthlyValue: 5000, sentProposalVersion: null });
+    expect(await getDeal(crm, deal.id)).toMatchObject({ monthlyValue: 5000, proposal: null });
 
     expect(await crm.proposals.markSent(draft.id)).toEqual({ ok: true, value: undefined });
 
     const after = await getDeal(crm, deal.id);
-    expect(after).toMatchObject({ monthlyValue: 6800, sentProposalVersion: 1, estimatedMonthlyValue: 5000, stage: "New" });
+    expect(after).toMatchObject({ monthlyValue: 6800, proposal: { version: 1, status: "Sent" }, estimatedMonthlyValue: 5000, stage: "New" });
     expect(after.proposals[0].status).toBe("Sent");
     expect(Math.abs(Date.now() - after.proposals[0].sentAt!.getTime())).toBeLessThan(60_000);
   });
@@ -176,7 +168,7 @@ describe("sending a Proposal", () => {
     expectOk(await crm.proposals.markSent(draft.id));
 
     const after = await board();
-    expect(after.deals.find((card) => card.id === deal.id)).toMatchObject({ monthlyValue: 6800, sentProposalVersion: 1 });
+    expect(after.deals.find((card) => card.id === deal.id)).toMatchObject({ monthlyValue: 6800, proposal: { version: 1, status: "Sent" } });
     expect(after.kpis.openMonthlyValue - before.kpis.openMonthlyValue).toBe(1800);
     expect(after.kpis.proposalsOut).toEqual({
       deals: before.kpis.proposalsOut.deals + 1,
@@ -289,12 +281,12 @@ describe("a declined Proposal", () => {
     const deal = await newDeal(crm);
     const draft = expectOk(await crm.proposals.createDraft(deal.id, OFFER));
     expectOk(await crm.proposals.markSent(draft.id));
-    expectOk(await crm.deals.moveToStage(deal.id, "Negotiation"));
+    expectOk(await crm.deals.moveToStage(deal.id, "Negotiation", { today: utcDay() }));
 
     expect(await crm.proposals.markDeclined(draft.id)).toEqual({ ok: true, value: undefined });
 
     const after = await getDeal(crm, deal.id);
-    expect(after).toMatchObject({ stage: "Negotiation", monthlyValue: 5000, sentProposalVersion: null });
+    expect(after).toMatchObject({ stage: "Negotiation", monthlyValue: 5000, proposal: null });
     expect(after.proposals).toMatchObject([{ version: 1, status: "Declined", monthlyTotal: 6800 }]);
   });
 
@@ -311,7 +303,7 @@ describe("a declined Proposal", () => {
     expectOk(await crm.proposals.markSent(revised.id));
 
     const after = await getDeal(crm, deal.id);
-    expect(after).toMatchObject({ monthlyValue: 4200, sentProposalVersion: 2 });
+    expect(after).toMatchObject({ monthlyValue: 4200, proposal: { version: 2, status: "Sent" } });
     expect(after.proposals.map(({ version, status }) => [version, status])).toEqual([
       [2, "Sent"],
       [1, "Declined"],

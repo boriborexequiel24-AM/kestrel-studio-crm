@@ -21,10 +21,10 @@ describe("Start over", () => {
 
     expect(await crm.sandbox.startOver({ today: utcDay() })).toEqual({ ok: true, value: undefined });
 
-    const names = expectOk(await crm.companies.list()).map((company) => company.name);
+    const names = expectOk(await crm.companies.list({ today: utcDay() })).map((company) => company.name);
     expect(names).toContain("Harbor & Pine Coffee");
     expect(names).not.toContain("Added Before Start Over");
-    expect(expectOk(await crm.companies.get(harbor.id)).activities).toHaveLength(harbor.activities.length);
+    expect(expectOk(await crm.companies.get(harbor.id, { today: utcDay() })).activities).toHaveLength(harbor.activities.length);
   });
 
   it("resets every Sandbox table to the Template", async () => {
@@ -55,7 +55,7 @@ describe("Start over", () => {
 
     expectOk(await mine.crm.sandbox.startOver({ today: utcDay() }));
 
-    expect(expectOk(await theirs.crm.companies.list()).map((company) => company.name)).toContain("Theirs To Keep");
+    expect(expectOk(await theirs.crm.companies.list({ today: utcDay() })).map((company) => company.name)).toContain("Theirs To Keep");
   });
 
   it("needs a live Sandbox", async () => {

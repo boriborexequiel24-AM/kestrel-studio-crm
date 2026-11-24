@@ -6,6 +6,7 @@ import { contactsArea } from "./contacts";
 import { dealsArea, pipelineArea } from "./deals";
 import type { CrmContext, CrmSupabaseClient } from "./core";
 import { proposalsArea } from "./proposals";
+import { retainersArea } from "./retainers";
 import { sandboxArea, type SandboxLimits } from "./sandbox";
 import { teamArea } from "./team";
 
@@ -20,7 +21,7 @@ export type { SandboxInfo, SandboxLimits, SandboxStatus } from "./sandbox";
 export type { Owner } from "./team";
 export type { Activity } from "./activities";
 export type { Contact } from "./contacts";
-export type { DealCard, DealDetail, DealInput, NextStep, PipelineBoard } from "./deals";
+export type { DealCard, DealDetail, DealInput, DealTotals, NextStep, PipelineBoard } from "./deals";
 export type {
   CompanyDetail,
   CompanyFilter,
@@ -42,9 +43,11 @@ export {
   type DealStage,
   type OpenStage,
   type ProposalStatus,
+  type RetainerState,
 } from "./terms";
 export type { ContactInput } from "./contacts";
 export type { LineItem, Proposal, ProposalInput } from "./proposals";
+export type { Retainer } from "./retainers";
 export type { ActivityFields, ActivityInput } from "./activities";
 
 export type CrmDeps = { ai?: AiProvider; limits: SandboxLimits };
@@ -63,6 +66,7 @@ export function createCrm(supabase: CrmSupabaseClient, deps: CrmDeps) {
     deals: dealsArea(context),
     pipeline: pipelineArea(context),
     proposals: proposalsArea(context),
+    retainers: retainersArea(context),
   };
 }
 

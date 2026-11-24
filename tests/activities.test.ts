@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { utcDay } from "./support/days";
 import { expectOk } from "./support/results";
 import { sampleCompany } from "./support/sample";
 import { visitorWithSandbox } from "./support/visitors";
@@ -15,7 +16,7 @@ describe("logging an Activity", () => {
       await crm.activities.log({ companyId: company.id, kind: "Call", occurredAt, text: " Intro call. They want a spring launch. " }),
     );
 
-    const [newest] = expectOk(await crm.companies.get(company.id)).activities;
+    const [newest] = expectOk(await crm.companies.get(company.id, { today: utcDay() })).activities;
     expect(newest).toMatchObject({
       id: logged.id,
       kind: "Call",
@@ -35,7 +36,7 @@ describe("logging an Activity", () => {
       await crm.activities.log({ companyId: company.id, contactId: contact.id, kind: "Email", occurredAt: new Date(), text: "Sent the brief." }),
     );
 
-    const activity = expectOk(await crm.companies.get(company.id)).activities.find((a) => a.id === logged.id);
+    const activity = expectOk(await crm.companies.get(company.id, { today: utcDay() })).activities.find((a) => a.id === logged.id);
     expect(activity?.contact).toEqual({ id: contact.id, name: contact.name });
   });
 
@@ -99,7 +100,7 @@ describe("correcting an Activity", () => {
     });
 
     expect(updated).toEqual({ ok: true, value: undefined });
-    const after = expectOk(await crm.companies.get(company.id)).activities.find((a) => a.id === activity.id);
+    const after = expectOk(await crm.companies.get(company.id, { today: utcDay() })).activities.find((a) => a.id === activity.id);
     expect(after).toMatchObject({
       kind: "Meeting",
       text: "Met Ben at the roastery instead.",
@@ -136,7 +137,7 @@ describe("correcting an Activity", () => {
 
     expect(await crm.activities.delete(activity.id)).toEqual({ ok: true, value: undefined });
 
-    const after = expectOk(await crm.companies.get(company.id)).activities;
+    const after = expectOk(await crm.companies.get(company.id, { today: utcDay() })).activities;
     expect(after.map((a) => a.id)).not.toContain(activity.id);
     expect(after).toHaveLength(company.activities.length - 1);
     expect(await crm.activities.delete(activity.id)).toEqual({ ok: false, error: "not_found" });

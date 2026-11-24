@@ -103,14 +103,14 @@ isOneToOne: false
                   ]
                 },"deals": {
                   Row: {
-                    "company_id": string,"created_at": string,"estimated_monthly_value": number,"id": string,"kind": Database["crm"]['Enums']["deal_kind"],"next_step": string,"next_step_due": string | null,"owner_id": string,"sandbox_id": string,"stage": Database["crm"]['Enums']["deal_stage"],"title": string
+                    "closed_on": string | null,"company_id": string,"created_at": string,"estimated_monthly_value": number,"id": string,"kind": Database["crm"]['Enums']["deal_kind"],"next_step": string,"next_step_due": string | null,"owner_id": string,"sandbox_id": string,"stage": Database["crm"]['Enums']["deal_stage"],"title": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "company_id": string,"created_at"?: string,"estimated_monthly_value": number,"id"?: string,"kind"?: Database["crm"]['Enums']["deal_kind"],"next_step"?: string,"next_step_due"?: string | null,"owner_id": string,"sandbox_id"?: string,"stage"?: Database["crm"]['Enums']["deal_stage"],"title": string
+                    "closed_on"?: string | null,"company_id": string,"created_at"?: string,"estimated_monthly_value": number,"id"?: string,"kind"?: Database["crm"]['Enums']["deal_kind"],"next_step"?: string,"next_step_due"?: string | null,"owner_id": string,"sandbox_id"?: string,"stage"?: Database["crm"]['Enums']["deal_stage"],"title": string
                   }
                   Update: {
-                    "company_id"?: string,"created_at"?: string,"estimated_monthly_value"?: number,"id"?: string,"kind"?: Database["crm"]['Enums']["deal_kind"],"next_step"?: string,"next_step_due"?: string | null,"owner_id"?: string,"sandbox_id"?: string,"stage"?: Database["crm"]['Enums']["deal_stage"],"title"?: string
+                    "closed_on"?: string | null,"company_id"?: string,"created_at"?: string,"estimated_monthly_value"?: number,"id"?: string,"kind"?: Database["crm"]['Enums']["deal_kind"],"next_step"?: string,"next_step_due"?: string | null,"owner_id"?: string,"sandbox_id"?: string,"stage"?: Database["crm"]['Enums']["deal_stage"],"title"?: string
                   }
                   Relationships: [
                     {
@@ -185,6 +185,44 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"retainers": {
+                  Row: {
+                    "company_id": string,"deal_id": string,"end_date": string,"id": string,"monthly_fee": number,"owner_id": string,"sandbox_id": string,"start_date": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "company_id": string,"deal_id": string,"end_date": string,"id"?: string,"monthly_fee": number,"owner_id": string,"sandbox_id"?: string,"start_date": string
+                  }
+                  Update: {
+                    "company_id"?: string,"deal_id"?: string,"end_date"?: string,"id"?: string,"monthly_fee"?: number,"owner_id"?: string,"sandbox_id"?: string,"start_date"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "retainers_deal_at_company"
+      columns: ["sandbox_id","company_id","deal_id"]
+isOneToOne: false
+      referencedRelation: "deals"
+      referencedColumns: ["sandbox_id","company_id","id"]
+    },{
+      foreignKeyName: "retainers_sandbox_id_company_id_fkey"
+      columns: ["sandbox_id","company_id"]
+isOneToOne: false
+      referencedRelation: "companies"
+      referencedColumns: ["sandbox_id","id"]
+    },{
+      foreignKeyName: "retainers_sandbox_id_fkey"
+      columns: ["sandbox_id"]
+isOneToOne: false
+      referencedRelation: "sandboxes"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "retainers_sandbox_id_owner_id_fkey"
+      columns: ["sandbox_id","owner_id"]
+isOneToOne: false
+      referencedRelation: "teammates"
+      referencedColumns: ["sandbox_id","id"]
+    }
+                  ]
                 },"sandbox_openings": {
                   Row: {
                     "id": number,"ip_hash": string,"opened_at": string
@@ -254,6 +292,9 @@ isOneToOne: false
 "fill_sandbox":
 { Args: { "target": string,"today": string }; Returns: undefined
                            },
+"last_day":
+{ Args: { "months": number,"start_date": string }; Returns: string
+                           },
 "open_sandbox":
 { Args: { "daily_limit": number,"ip_hash": string,"today": string }; Returns: {
               "created_at": string,
@@ -275,6 +316,12 @@ isOneToOne: false
                            },
 "start_over":
 { Args: { "today": string }; Returns: undefined
+                           },
+"visitor_day":
+{ Args: { "claimed": string }; Returns: string
+                           },
+"win_deal":
+{ Args: { "deal": string,"proposal_version"?: number,"today": string }; Returns: undefined
                            }
           }
           Enums: {

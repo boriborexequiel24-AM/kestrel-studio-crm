@@ -11,7 +11,7 @@ export function ComingSoon({ title }: { title: string }) {
         <SandboxGate />
       </Suspense>
       <p className="mt-5 rounded-xl border border-border bg-card p-4 text-muted-foreground">
-        {title} is still being built. Companies is ready to try.
+        {title} is still being built. Companies, Pipeline and Retainers are ready to try.
       </p>
     </>
   );

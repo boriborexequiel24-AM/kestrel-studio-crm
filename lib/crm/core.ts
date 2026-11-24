@@ -49,9 +49,23 @@ export function isWholeDollars(dollars: number): boolean {
   return Number.isInteger(dollars) && dollars >= 0 && dollars <= MAX_MONTHLY_DOLLARS;
 }
 
+const DAY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+/** Whether text is a real calendar day such as "2026-02-28". */
+export function isDay(text: string): boolean {
+  if (!DAY_PATTERN.test(text)) return false;
+  const date = new Date(`${text}T00:00:00Z`);
+  return !Number.isNaN(date.getTime()) && date.toISOString().startsWith(text);
+}
+
 /** A row the insert or update pointed at doesn't exist in this Sandbox. */
 export function isMissingReference(error: PostgrestError): boolean {
   return error.code === "23503";
+}
+
+/** Which of these rules the database refused with, if any. Its functions and triggers raise a rule's name. */
+export function ruleBroken<Rule extends string>(error: PostgrestError, ...rules: Rule[]): Rule | undefined {
+  return rules.find((rule) => error.message === rule);
 }
 
 /** Throws anything that isn't an expected, typed outcome. */

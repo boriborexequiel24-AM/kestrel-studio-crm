@@ -4,13 +4,14 @@ import type { DealDetail, Proposal, ProposalStatus } from "@/lib/crm";
 import { usd } from "@/lib/format";
 import { DeclineProposalButton, EditProposalButton, NewProposalButton, SendProposalButton } from "./proposal-forms";
 
-const isOpen = (proposal: Proposal) => proposal.status === "Draft" || proposal.status === "Sent";
+const isShown = (proposal: Proposal) => proposal.status !== "Declined";
 
-/** A Deal's Proposals: a Draft and the Sent one in full, settled ones folded away. */
+/** A Deal's Proposals: a Draft and the Sent or Accepted one in full, declined ones folded away. A Won Deal's are final. */
 export function ProposalCard({ deal }: { deal: DealDetail }) {
-  const open = deal.proposals.filter(isOpen);
-  const settled = deal.proposals.filter((proposal) => !isOpen(proposal));
-  const hasDraft = open.some((proposal) => proposal.status === "Draft");
+  const shown = deal.proposals.filter(isShown);
+  const declined = deal.proposals.filter((proposal) => !isShown(proposal));
+  const hasDraft = shown.some((proposal) => proposal.status === "Draft");
+  const won = deal.stage === "Won";
   return (
     <section aria-labelledby="proposal-heading" className="rounded-xl border border-border bg-card p-4">
       <h3 id="proposal-heading" className="flex items-center gap-1.5 text-[13px] font-semibold text-muted-foreground">
@@ -18,14 +19,14 @@ export function ProposalCard({ deal }: { deal: DealDetail }) {
       </h3>
       {deal.proposals.length === 0 && <p className="mt-2 text-[14px] text-muted-foreground">No Proposal on this Deal yet.</p>}
       <div className="divide-y divide-border">
-        {open.map((proposal) => (
+        {shown.map((proposal) => (
           <div key={proposal.id} className="py-3">
             <ProposalDetails proposal={proposal} />
-            <div className="mt-3 flex flex-wrap items-start gap-2">
-              {proposal.status === "Draft" && (
+            <div className="mt-3 flex flex-wrap items-start gap-2 empty:hidden">
+              {proposal.status === "Draft" && !won && (
                 <>
                   {/* The key drops an old "already Sent" message once that Proposal is declined. */}
-                  <SendProposalButton key={deal.sentProposalVersion} proposalId={proposal.id} />
+                  <SendProposalButton key={deal.proposal?.version} proposalId={proposal.id} />
                   <EditProposalButton
                     proposal={{
                       id: proposal.id,
@@ -41,7 +42,7 @@ export function ProposalCard({ deal }: { deal: DealDetail }) {
             </div>
           </div>
         ))}
-        {settled.map((proposal) => (
+        {declined.map((proposal) => (
           <details key={proposal.id} className="group py-1">
             <summary className="flex min-h-11 cursor-pointer items-center gap-1 rounded-md text-[13px] font-semibold hover:text-primary">
               <ChevronRight className="size-4 shrink-0 transition-transform duration-150 group-open:rotate-90" aria-hidden />
@@ -53,7 +54,7 @@ export function ProposalCard({ deal }: { deal: DealDetail }) {
           </details>
         ))}
       </div>
-      {!hasDraft && (
+      {!hasDraft && !won && (
         <div className="mt-2">
           <NewProposalButton dealId={deal.id} revising={deal.proposals.length > 0} />
         </div>

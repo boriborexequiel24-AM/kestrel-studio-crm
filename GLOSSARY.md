@@ -71,7 +71,7 @@ What a Deal is expected to bring in each month: an estimate until a Proposal is 
 _Avoid_: Deal size, Amount, MRR
 
 **Retainer**:
-A signed, recurring agreement with a Company, with a monthly fee and an end date.
+A signed, recurring agreement with a Company, with a monthly fee and an end date. Active through its end date, Ends soon in its last 60 days, then Ended.
 _Avoid_: Contract, Account, Subscription
 
 **Activity**:

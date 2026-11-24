@@ -1,22 +1,23 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
-import { CalendarClock, Check, MessageSquareText, Users } from "lucide-react";
+import { CalendarClock, Check, MessageSquareText, Repeat, Users } from "lucide-react";
 import { PageHeader } from "@/components/app/page-header";
 import { RelativeTime } from "@/components/app/relative-time";
 import { ACTIVITY_KIND_ICON } from "@/components/companies/activity-kind";
 import { LogActivityButton } from "@/components/companies/activity-forms";
 import { ownerOptions } from "@/components/companies/owner-options";
+import { RetainerStateChip } from "@/components/retainers/retainer-state";
 import { SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { OPEN_STAGES, isOpenStage, type Crm, type DealCard, type DealDetail, type PipelineBoard } from "@/lib/crm";
+import { OPEN_STAGES, isOpenStage, type Crm, type DealCard, type DealDetail, type PipelineBoard, type Retainer } from "@/lib/crm";
 import { requireLiveSandbox, valueOrLanding, landingFor } from "@/lib/crm/server";
-import { dueLabel, fullName, usd, usdShort } from "@/lib/format";
+import { dueLabel, fullName, longDay, usd, usdShort } from "@/lib/format";
 import { visitorToday } from "@/lib/visitor-day";
 import { DealSheetFrame } from "./deal-sheet-frame";
 import { ProposalCard } from "./proposal-card";
 import { DeleteDealButton, EditDealButton, NewDealButton, NextStepButton, type DealFormOptions } from "./deal-forms";
 import { STAGE_COLOR } from "./stage";
-import { MoveToMenu, StageSelect } from "./stage-controls";
+import { MoveToMenu, StageSelect, type StagedDeal } from "./stage-controls";
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
@@ -50,9 +51,14 @@ function mineQuery(mine: boolean) {
   return mine ? "?mine=1" : "";
 }
 
+/** Only what the Stage controls need goes to the browser, not the whole Deal. */
+function stagedDeal({ id, title, stage, monthlyValue, proposal }: DealCard): StagedDeal {
+  return { id, title, stage, monthlyValue, proposal };
+}
+
 /** The Companies and Owners a Deal form can pick from. */
 async function dealFormOptions(crm: Crm): Promise<DealFormOptions> {
-  const [companies, team] = await Promise.all([crm.companies.list(), crm.team.list()]);
+  const [companies, team] = await Promise.all([crm.companies.list({ today: await visitorToday() }), crm.team.list()]);
   return {
     companies: valueOrLanding(companies).map((company) => ({ value: company.id, label: company.name })),
     owners: ownerOptions(valueOrLanding(team)),
@@ -162,16 +168,22 @@ async function Board({ searchParams, openDealId }: { searchParams: SearchParams;
 }
 
 function KpiStrip({ board }: { board: PipelineBoard }) {
-  const { openMonthlyValue, openDeals, proposalsOut, overdueNextSteps } = board.kpis;
+  const { openMonthlyValue, openDeals, proposalsOut, wonThisMonth, overdueNextSteps } = board.kpis;
   const deals = (count: number) => (count === 1 ? "Deal" : "Deals");
   return (
-    <dl className="mt-5 grid gap-3 sm:grid-cols-3">
+    <dl className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       <Kpi label="Open pipeline" value={usd(openMonthlyValue)} detail={`${openDeals} open ${deals(openDeals)}, a month`} bar="bg-primary" />
       <Kpi
         label="Proposals out"
         value={usd(proposalsOut.monthlyValue)}
         detail={`${proposalsOut.deals} ${deals(proposalsOut.deals)} with a Sent Proposal, a month`}
         bar="bg-stage-proposal-sent"
+      />
+      <Kpi
+        label="Won this month"
+        value={usd(wonThisMonth.monthlyValue)}
+        detail={`${wonThisMonth.deals} ${deals(wonThisMonth.deals)} won, a month`}
+        bar="bg-stage-won"
       />
       <Kpi
         label="Overdue Next steps"
@@ -231,7 +243,7 @@ function DealCardView({ deal, today, mine, selected }: { deal: DealCard; today: 
         )}
       </Link>
       <div className="absolute top-1.5 right-1.5">
-        <MoveToMenu dealId={deal.id} stage={deal.stage} dealTitle={deal.title} />
+        <MoveToMenu deal={stagedDeal(deal)} />
       </div>
     </div>
   );
@@ -258,11 +270,11 @@ async function DealSheet({ id, searchParams }: { id: string; searchParams: Searc
           Deal for {deal.company.name}, in {deal.stage}
         </SheetDescription>
         <div className="mt-1 flex flex-wrap items-start justify-between gap-3">
-          <StageSelect dealId={deal.id} stage={deal.stage} hasSentProposal={deal.sentProposalVersion !== null} />
+          <StageSelect deal={stagedDeal(deal)} />
           <div className="text-right">
             <div className="text-[24px] leading-none font-bold tabular-nums">{usd(deal.monthlyValue)}</div>
             <div className="mt-1 text-[12px] text-muted-foreground">
-              {deal.sentProposalVersion ? `a month, Proposal v${deal.sentProposalVersion}` : "a month, estimated"}
+              {deal.proposal ? `a month, Proposal v${deal.proposal.version}` : "a month, estimated"}
             </div>
           </div>
         </div>
@@ -280,13 +292,14 @@ async function DealSheet({ id, searchParams }: { id: string; searchParams: Searc
             }}
             options={options}
           />
-          <DeleteDealButton deal={deal} mine={mine} />
+          {deal.stage !== "Won" && <DeleteDealButton deal={deal} mine={mine} />}
         </div>
       </SheetHeader>
 
       <div className="space-y-5 p-5">
         <StageStepper deal={deal} />
-        <NextStepCard deal={deal} today={today} />
+        {deal.retainer && <RetainerCard retainer={deal.retainer} />}
+        {(deal.nextStep || deal.stage !== "Won") && <NextStepCard deal={deal} today={today} />}
         <div className="grid items-start gap-5 sm:grid-cols-2">
           <ProposalCard deal={deal} />
           <PeopleCard deal={deal} />
@@ -316,6 +329,24 @@ function StageStepper({ deal }: { deal: DealDetail }) {
         );
       })}
     </ol>
+  );
+}
+
+/** What winning the Deal started. */
+function RetainerCard({ retainer }: { retainer: Retainer }) {
+  return (
+    <section aria-labelledby="retainer-heading" className="rounded-xl border border-won/30 bg-won/5 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 id="retainer-heading" className="flex items-center gap-1.5 text-[13px] font-semibold text-muted-foreground">
+          <Repeat className="size-4" aria-hidden /> Retainer
+        </h3>
+        <RetainerStateChip state={retainer.state} />
+      </div>
+      <p className="mt-1 text-[17px] font-semibold tabular-nums">{usd(retainer.monthlyFee)} a month</p>
+      <p className="text-[13px] text-muted-foreground">
+        {longDay(retainer.startDate)} to {longDay(retainer.endDate)}
+      </p>
+    </section>
   );
 }
 

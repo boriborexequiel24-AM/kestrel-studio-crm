@@ -5,6 +5,7 @@ import type { FormState } from "@/components/forms/form-state";
 import type { DealStage } from "@/lib/crm";
 import { getCrm } from "@/lib/crm/server";
 import { formText as text, toFormState } from "@/lib/form-results";
+import { visitorToday } from "@/lib/visitor-day";
 
 /** Keeps the Pipeline's Mine / Everyone choice across a redirect. */
 function mineQuery(form: FormData) {
@@ -48,7 +49,8 @@ export async function deleteDeal(_state: FormState, form: FormData): Promise<For
 
 export async function moveDeal(_state: FormState, form: FormData): Promise<FormState> {
   const crm = await getCrm();
-  return toFormState(await crm.deals.moveToStage(text(form, "dealId"), text(form, "stage") as DealStage), form);
+  const move = { today: await visitorToday(), proposalVersion: Number(text(form, "proposalVersion")) || undefined };
+  return toFormState(await crm.deals.moveToStage(text(form, "dealId"), text(form, "stage") as DealStage, move), form);
 }
 
 export async function setNextStep(_state: FormState, form: FormData): Promise<FormState> {

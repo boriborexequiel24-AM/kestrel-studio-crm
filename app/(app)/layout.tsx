@@ -6,7 +6,7 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
   return (
     <div className="min-h-screen">
       <TopBar />
-      <main className="mx-auto max-w-[1440px] px-4 pt-6 pb-16 md:px-6">{children}</main>
+      <main tabIndex={-1} className="outline-none mx-auto max-w-[1440px] px-4 pt-6 pb-16 md:px-6">{children}</main>
     </div>
   );
 }

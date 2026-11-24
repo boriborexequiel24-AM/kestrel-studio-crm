@@ -33,6 +33,7 @@
   --color-destructive: var(--destructive);
   --color-won: var(--won);
   --color-won-hover: var(--won-hover);
+  --color-warning: var(--warning);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -79,6 +80,7 @@
   --destructive: #dc2626;
   --won: #059669;
   --won-hover: #047857;
+  --warning: #b45309;
   --border: #e4ecfc;
   --input: #cbd5e1;
   --ring: #2563eb;

@@ -11,6 +11,7 @@ import { COMPANY_STATUSES, type CompanyFilter, type CompanyStatus } from "@/lib/
 import { requireLiveSandbox, valueOrLanding } from "@/lib/crm/server";
 import { RelativeTime } from "@/components/app/relative-time";
 import { fullName } from "@/lib/format";
+import { visitorToday } from "@/lib/visitor-day";
 
 export const metadata: Metadata = { title: "Companies" };
 
@@ -36,7 +37,7 @@ async function NewCompany() {
   return <NewCompanyButton owners={ownerOptions(valueOrLanding(await crm.team.list()))} />;
 }
 
-function readFilter(params: Awaited<SearchParams>): CompanyFilter {
+function readFilter(params: Awaited<SearchParams>): Omit<CompanyFilter, "today"> {
   const one = (key: string) => {
     const value = params[key];
     return (Array.isArray(value) ? value[0] : value) ?? "";
@@ -51,8 +52,8 @@ function readFilter(params: Awaited<SearchParams>): CompanyFilter {
 
 async function CompaniesSection({ searchParams }: { searchParams: SearchParams }) {
   const filter = readFilter(await searchParams);
-  const { crm } = await requireLiveSandbox();
-  const [companies, team] = await Promise.all([crm.companies.list(filter), crm.team.list()]);
+  const [{ crm }, today] = await Promise.all([requireLiveSandbox(), visitorToday()]);
+  const [companies, team] = await Promise.all([crm.companies.list({ ...filter, today }), crm.team.list()]);
   const owners = valueOrLanding(team);
   const shown = valueOrLanding(companies);
   const filtering = Boolean(filter.search || filter.ownerId || filter.status);

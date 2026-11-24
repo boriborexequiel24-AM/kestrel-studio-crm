@@ -6,6 +6,11 @@ export const ACTIVITY_KINDS: readonly ActivityKind[] = ["Email", "Call", "Meetin
 /** A calendar day, "2026-11-24". Due dates are days, compared with the visitor's own today. */
 export type Day = string;
 
+/** Whole days from one calendar day to another: "2026-11-24" to "2026-11-26" is 2. */
+export function daysFrom(from: Day, to: Day): number {
+  return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / (24 * 60 * 60 * 1000));
+}
+
 export type DealStage = "New" | "Qualified" | "Discovery" | "Proposal sent" | "Negotiation" | "Won" | "Lost";
 export const DEAL_STAGES: readonly DealStage[] = ["New", "Qualified", "Discovery", "Proposal sent", "Negotiation", "Won", "Lost"];
 export type OpenStage = Exclude<DealStage, "Won" | "Lost">;
@@ -19,6 +24,9 @@ export const MAX_MONTHLY_DOLLARS = 10_000_000;
 export const MAX_TERM_MONTHS = 60;
 
 export type ProposalStatus = "Draft" | "Sent" | "Accepted" | "Declined";
+
+/** Where a Retainer is, by the visitor's calendar. "Ends soon" ones are still active. */
+export type RetainerState = "Active" | "Ends soon" | "Ended";
 
 /** Derived, never stored: a Client has an active Retainer, a Prospect doesn't. */
 export type CompanyStatus = "Client" | "Prospect";

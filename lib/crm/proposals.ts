@@ -1,6 +1,6 @@
 import "server-only";
 import type { PostgrestError } from "@supabase/supabase-js";
-import { clean, fail, isId, isWholeDollars, ok, unexpected, type CrmContext } from "./core";
+import { clean, fail, isId, isWholeDollars, ok, ruleBroken, unexpected, type CrmContext } from "./core";
 import { MAX_TERM_MONTHS, type ProposalStatus } from "./terms";
 
 export type LineItem = { service: string; monthlyFee: number };
@@ -33,7 +33,7 @@ export function proposalsArea({ db, inLiveSandbox }: CrmContext) {
   ) {
     if (!isId(id)) return fail("not_found");
     const { data, error } = await db.from("proposals").update(change).eq("id", id).eq("status", from).select("id");
-    if (error) return isSecondSent(error) ? fail("another_proposal_sent") : unexpected(error);
+    if (error) return fail(isSecondSent(error) ? "another_proposal_sent" : (ruleBroken(error, "deal_already_won") ?? unexpected(error)));
     if (data.length) return ok(undefined);
     const existing = await db.from("proposals").select("id").eq("id", id).maybeSingle();
     if (existing.error) unexpected(existing.error);
@@ -48,9 +48,8 @@ export function proposalsArea({ db, inLiveSandbox }: CrmContext) {
         const fields = checkFields(input);
         if (!fields.ok) return fields;
         const { data, error } = await db.rpc("draft_proposal", { deal: dealId, ...fields.value });
-        if (error?.message === "not_found") return fail("not_found");
-        if (error) unexpected(error);
-        return ok({ id: data! });
+        if (error) return fail(ruleBroken(error, "not_found", "deal_already_won") ?? unexpected(error));
+        return ok({ id: data });
       }),
 
     /** Replaces a Draft's scope, term and line items. */
@@ -90,6 +89,8 @@ function checkFields(input: ProposalInput) {
   const items = input.lineItems.map((item) => ({ service: clean(item.service), monthly_fee: item.monthlyFee }));
   if (items.some((item) => !item.service)) return fail("service_required");
   if (!items.every((item) => isWholeDollars(item.monthly_fee))) return fail("fee_invalid");
+  // The total becomes the Retainer's fee, so it has the same limit.
+  if (!isWholeDollars(monthlyTotal(items))) return fail("total_too_large");
   return ok({ scope, term, items });
 }
 

@@ -1,8 +1,9 @@
 "use client";
 
-import { useActionState, useRef, useTransition } from "react";
+import { useActionState, useRef, useState, useTransition, type RefObject } from "react";
 import { MoreHorizontal } from "lucide-react";
 import { moveDeal } from "@/app/(app)/pipeline/actions";
+import { ConfirmDialog } from "@/components/forms/form-dialog";
 import { IDLE } from "@/components/forms/form-state";
 import {
   DropdownMenu,
@@ -11,36 +12,81 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import type { DealCard } from "@/lib/crm";
 import { OPEN_STAGES, type DealStage } from "@/lib/crm/terms";
+import { usd } from "@/lib/format";
 import { StageDot } from "./stage";
 
-/** Why Won and Lost can't be picked yet. Tickets 07 and 09 make them available. */
-function wonLostRules(hasSentProposal: boolean): [DealStage, string][] {
-  return [
-    ["Won", hasSentProposal ? "coming soon" : "needs a Sent Proposal"],
-    ["Lost", "needs a Lost reason"],
-  ];
+/** The part of a Deal its Stage controls need. */
+export type StagedDeal = Pick<DealCard, "id" | "title" | "stage" | "monthlyValue" | "proposal">;
+
+const canWin = (deal: StagedDeal) => deal.proposal?.status === "Sent";
+const WON_RULE = "needs a Sent Proposal";
+
+/** Asks before a Deal is won: it accepts the Proposal and starts the Retainer, and neither can be undone. */
+function WinDialog({
+  deal,
+  ...opened
+}: {
+  deal: StagedDeal;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  returnFocusTo: RefObject<HTMLElement | null>;
+}) {
+  return (
+    <ConfirmDialog
+      opened={opened}
+      title="Mark Proposal accepted and start the Retainer?"
+      description={`Proposal v${deal.proposal?.version} of "${deal.title}" becomes Accepted, the Deal moves to Won, and a Retainer at ${usd(
+        deal.monthlyValue,
+      )} a month starts today. You can't undo it, but Start over brings back the sample data.`}
+      action={moveDeal}
+      confirmLabel="Accept and start"
+      pendingLabel="Starting..."
+      tone="positive"
+      hidden={{ dealId: deal.id, stage: "Won", proposalVersion: String(deal.proposal?.version ?? "") }}
+    />
+  );
 }
 
-/** The Deal Sheet's Stage dropdown. Picking a Stage moves the Deal at once. */
-export function StageSelect({ dealId, stage, hasSentProposal }: { dealId: string; stage: DealStage; hasSentProposal: boolean }) {
+/** The Deal Sheet's Stage dropdown. Picking an open Stage moves the Deal at once; Won asks first and is final. */
+export function StageSelect({ deal }: { deal: StagedDeal }) {
   const [state, action, pending] = useActionState(moveDeal, IDLE);
+  const [winning, setWinning] = useState(false);
   const form = useRef<HTMLFormElement>(null);
+  const select = useRef<HTMLSelectElement>(null);
+
+  if (deal.stage === "Won") {
+    return (
+      <p className="flex h-11 items-center gap-2 text-[14px] font-semibold">
+        <StageDot stage="Won" className="size-3" />
+        Won
+      </p>
+    );
+  }
+
+  function pick(target: HTMLSelectElement) {
+    if (target.value !== "Won") return form.current?.requestSubmit();
+    target.value = deal.stage;
+    setWinning(true);
+  }
+
   return (
     <form ref={form} action={action} className="grid gap-1">
-      <input type="hidden" name="dealId" value={dealId} />
+      <input type="hidden" name="dealId" value={deal.id} />
       <label htmlFor="deal-stage" className="sr-only">
         Stage
       </label>
       <div className="flex items-center gap-2">
-        <StageDot stage={stage} className="size-3" />
+        <StageDot stage={deal.stage} className="size-3" />
         <select
+          ref={select}
           id="deal-stage"
           name="stage"
-          defaultValue={stage}
-          key={stage}
+          defaultValue={deal.stage}
+          key={deal.stage}
           disabled={pending}
-          onChange={() => form.current?.requestSubmit()}
+          onChange={(event) => pick(event.target)}
           className="h-11 rounded-lg border border-input bg-card px-3 text-[14px] font-semibold transition-colors duration-150 hover:border-muted-foreground"
         >
           {OPEN_STAGES.map((open) => (
@@ -48,11 +94,12 @@ export function StageSelect({ dealId, stage, hasSentProposal }: { dealId: string
               {open}
             </option>
           ))}
-          {wonLostRules(hasSentProposal).map(([wonOrLost, rule]) => (
-            <option key={wonOrLost} value={wonOrLost} disabled>
-              {wonOrLost} ({rule})
-            </option>
-          ))}
+          <option value="Won" disabled={!canWin(deal)}>
+            {canWin(deal) ? "Won" : `Won (${WON_RULE})`}
+          </option>
+          <option value="Lost" disabled>
+            Lost (needs a Lost reason)
+          </option>
         </select>
       </div>
       {state.status === "error" && (
@@ -60,18 +107,21 @@ export function StageSelect({ dealId, stage, hasSentProposal }: { dealId: string
           {state.message}
         </p>
       )}
+      <WinDialog deal={deal} open={winning} onOpenChange={setWinning} returnFocusTo={select} />
     </form>
   );
 }
 
-/** "Move to..." on a Deal card: the other open Stages. */
-export function MoveToMenu({ dealId, stage, dealTitle }: { dealId: string; stage: DealStage; dealTitle: string }) {
+/** "Move to..." on a Deal card: the other open Stages, and Won once there's a Sent Proposal. */
+export function MoveToMenu({ deal }: { deal: StagedDeal }) {
   const [state, action] = useActionState(moveDeal, IDLE);
   const [pending, startTransition] = useTransition();
+  const [winning, setWinning] = useState(false);
+  const trigger = useRef<HTMLButtonElement>(null);
 
   function moveTo(target: DealStage) {
     const form = new FormData();
-    form.set("dealId", dealId);
+    form.set("dealId", deal.id);
     form.set("stage", target);
     startTransition(() => action(form));
   }
@@ -80,7 +130,8 @@ export function MoveToMenu({ dealId, stage, dealTitle }: { dealId: string; stage
     <div className="relative">
       <DropdownMenu>
         <DropdownMenuTrigger
-          aria-label={`Move ${dealTitle} to another Stage`}
+          ref={trigger}
+          aria-label={`Move ${deal.title} to another Stage`}
           disabled={pending}
           className="relative grid size-8 place-items-center rounded-md text-muted-foreground transition-colors duration-150 after:absolute after:-inset-1.5 hover:bg-muted hover:text-foreground"
         >
@@ -88,14 +139,27 @@ export function MoveToMenu({ dealId, stage, dealTitle }: { dealId: string; stage
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="min-w-48 border-border">
           <DropdownMenuLabel className="text-[12px] text-muted-foreground">Move to...</DropdownMenuLabel>
-          {OPEN_STAGES.filter((open) => open !== stage).map((open) => (
+          {OPEN_STAGES.filter((open) => open !== deal.stage).map((open) => (
             <DropdownMenuItem key={open} onSelect={() => moveTo(open)} className="min-h-11 gap-2 text-[14px]">
               <StageDot stage={open} />
               {open}
             </DropdownMenuItem>
           ))}
+          {/* Not faded when disabled: the reason has to stay readable. */}
+          <DropdownMenuItem
+            disabled={!canWin(deal)}
+            onSelect={() => setWinning(true)}
+            className="min-h-11 gap-2 text-[14px] data-[disabled]:text-muted-foreground data-[disabled]:opacity-100"
+          >
+            <StageDot stage="Won" />
+            <span>
+              Won
+              {!canWin(deal) && <span className="block text-[12px]">{WON_RULE}</span>}
+            </span>
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      <WinDialog deal={deal} open={winning} onOpenChange={setWinning} returnFocusTo={trigger} />
       {state.status === "error" && (
         <p
           role="alert"

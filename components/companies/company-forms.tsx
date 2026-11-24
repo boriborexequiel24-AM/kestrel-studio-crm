@@ -64,7 +64,7 @@ export function DeleteCompanyButton({ company }: { company: { id: string; name: 
         </Button>
       }
       title={`Delete ${company.name}?`}
-      description="This also deletes its Contacts and Activity history. You can't undo it, but Start over brings back the sample data."
+      description="This also deletes its Contacts, Deals, Retainers and Activity history. You can't undo it, but Start over brings back the sample data."
       action={deleteCompany}
       confirmLabel="Delete Company"
       hidden={{ companyId: company.id }}

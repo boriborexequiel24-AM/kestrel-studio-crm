@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, use, useActionState, useState, type ReactNode } from "react";
+import { createContext, use, useActionState, useState, type ReactNode, type RefObject } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -112,7 +112,11 @@ function DialogForm({
 }
 
 type ConfirmDialogProps = {
-  trigger: ReactNode;
+  trigger?: ReactNode;
+  /** For a dialog opened by something else, such as picking Won from a list of Stages. */
+  opened?: { open: boolean; onOpenChange: (open: boolean) => void; returnFocusTo: RefObject<HTMLElement | null> };
+  /** "destructive" (the default) for something lost, "positive" for good news. */
+  tone?: "destructive" | "positive";
   title: string;
   description: string;
   action: FormAction;
@@ -122,13 +126,25 @@ type ConfirmDialogProps = {
   hidden?: Record<string, string>;
 };
 
-/** Asks before something that can't be undone, such as a delete or Start over. */
-export function ConfirmDialog({ trigger, title, description, ...form }: ConfirmDialogProps) {
-  const [open, setOpen] = useState(false);
+/** Asks before something that can't be undone, such as a delete, Start over or winning a Deal. */
+export function ConfirmDialog({ trigger, opened, title, description, ...form }: ConfirmDialogProps) {
+  const [openedHere, setOpenedHere] = useState(false);
+  const open = opened?.open ?? openedHere;
+  const setOpen = opened?.onOpenChange ?? setOpenedHere;
+
+  // Without a trigger of its own, the dialog can't tell where focus came from.
+  // If that's gone (a Won Deal leaves the Pipeline), the page itself takes it.
+  function returnFocus(event: Event) {
+    if (!opened) return;
+    event.preventDefault();
+    const from = opened.returnFocusTo.current;
+    (from?.isConnected ? from : document.querySelector<HTMLElement>("main"))?.focus();
+  }
+
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
-      <AlertDialogTrigger asChild>{trigger}</AlertDialogTrigger>
-      <AlertDialogContent>
+      {trigger && <AlertDialogTrigger asChild>{trigger}</AlertDialogTrigger>}
+      <AlertDialogContent onCloseAutoFocus={returnFocus}>
         <AlertDialogHeader>
           <AlertDialogTitle className="text-[20px] font-bold">{title}</AlertDialogTitle>
           <AlertDialogDescription className="text-[14px]">{description}</AlertDialogDescription>
@@ -149,8 +165,9 @@ function ConfirmForm({
   confirmLabel,
   pendingLabel,
   hidden = {},
+  tone = "destructive",
   onDone,
-}: Pick<ConfirmDialogProps, "action" | "confirmLabel" | "pendingLabel" | "hidden"> & { onDone: () => void }) {
+}: Pick<ConfirmDialogProps, "action" | "confirmLabel" | "pendingLabel" | "hidden" | "tone"> & { onDone: () => void }) {
   const [state, formAction, pending] = useDialogAction(action, onDone);
   return (
     <form action={formAction} className="grid gap-4">
@@ -158,7 +175,12 @@ function ConfirmForm({
       <FormError state={state} />
       <AlertDialogFooter className="gap-2">
         <AlertDialogCancel className="h-11 rounded-lg px-4">Cancel</AlertDialogCancel>
-        <Button type="submit" variant="destructive" disabled={pending} className="h-11 rounded-lg px-5 font-semibold">
+        <Button
+          type="submit"
+          variant={tone === "destructive" ? "destructive" : "default"}
+          disabled={pending}
+          className={`h-11 rounded-lg px-5 font-semibold ${tone === "positive" ? "hover:bg-primary-hover" : ""}`}
+        >
           {pending ? pendingLabel : confirmLabel}
         </Button>
       </AlertDialogFooter>

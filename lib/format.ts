@@ -1,3 +1,5 @@
+import { daysFrom, type Day } from "@/lib/crm/terms";
+
 const DAY = 24 * 60 * 60 * 1000;
 
 /** Midnight at the start of `date`'s calendar day, in this runtime's time zone. */
@@ -49,18 +51,23 @@ export function usdShort(amount: number): string {
   return `$${Number.isInteger(thousands) ? thousands : thousands.toFixed(1)}k`;
 }
 
-/** Whole days from one calendar day to another: "2026-11-24" to "2026-11-26" is 2. */
-function daysBetween(from: string, to: string): number {
-  return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / DAY);
+/** A calendar day as text. It has no time zone, so it reads the same on the server and in the browser. */
+function dayText(day: Day, parts: Intl.DateTimeFormatOptions): string {
+  return new Date(`${day}T00:00:00Z`).toLocaleDateString("en-US", { ...parts, timeZone: "UTC" });
+}
+
+/** "Dec 3, 2026". */
+export function longDay(day: Day): string {
+  return dayText(day, { month: "short", day: "numeric", year: "numeric" });
 }
 
 /** "Due today", "Due tomorrow", "Due in 3 days", "Due Dec 3", "Overdue by 2 days". */
-export function dueLabel(due: string | null, today: string): string {
+export function dueLabel(due: Day | null, today: Day): string {
   if (!due) return "No due date";
-  const days = daysBetween(today, due);
+  const days = daysFrom(today, due);
   if (days < 0) return days === -1 ? "Overdue since yesterday" : `Overdue by ${-days} days`;
   if (days === 0) return "Due today";
   if (days === 1) return "Due tomorrow";
   if (days < 7) return `Due in ${days} days`;
-  return `Due ${new Date(`${due}T00:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" })}`;
+  return `Due ${dayText(due, { month: "short", day: "numeric" })}`;
 }

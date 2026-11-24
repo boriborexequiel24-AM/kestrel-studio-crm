@@ -7,7 +7,8 @@
 
 -- Readable ids: Company 7 is ...00000000c007, its 2nd Contact ...0000000d0072,
 -- Teammate 1 (Maya) ...0000000000a1, Deal 3 ...0000000e0003,
--- its 2nd Proposal ...0000000f0032, Activity 12 ...0000000a0012.
+-- its 2nd Proposal ...0000000f0032, Deal 101's
+-- Retainer ...0000000b0101, Activity 12 ...0000000a0012.
 create function pg_temp.template() returns uuid language sql immutable
   as $$ select '00000000-0000-4000-8000-000000000000'::uuid $$;
 create function pg_temp.teammate(n int) returns uuid language sql immutable
@@ -20,6 +21,8 @@ create function pg_temp.deal(n int) returns uuid language sql immutable
   as $$ select ('00000000-0000-4000-8000-0000000e' || lpad(n::text, 4, '0'))::uuid $$;
 create function pg_temp.proposal(deal int, version int) returns uuid language sql immutable
   as $$ select ('00000000-0000-4000-8000-0000000f' || lpad(deal::text, 3, '0') || version)::uuid $$;
+create function pg_temp.retainer(deal int) returns uuid language sql immutable
+  as $$ select ('00000000-0000-4000-8000-0000000b' || lpad(deal::text, 4, '0'))::uuid $$;
 create function pg_temp.activity(n bigint) returns uuid language sql immutable
   as $$ select ('00000000-0000-4000-8000-0000000a' || lpad(n::text, 4, '0'))::uuid $$;
 -- A moment `days` before the anchor, at `hour` UTC (US business hours are about 13 to 23 UTC).
@@ -40,12 +43,12 @@ insert into crm.teammates (sandbox_id, id, first_name, last_name, role, initials
   (pg_temp.template(), pg_temp.teammate(4), 'Jonas', 'Webb', 'Performance Lead', 'JW', false),
   (pg_temp.template(), pg_temp.teammate(5), 'Ines', 'Calloway', 'Creative Director', 'IC', false);
 
--- 40 Companies. The first block will be Clients once Retainers exist
+-- 40 Companies. The first block are Clients
 -- (ticket 07); the rest are Prospects, most with Deals from ticket 05.
 insert into crm.companies (sandbox_id, id, name, industry, city, owner_id, added_at)
 select pg_temp.template(), pg_temp.company(v.n), v.name, v.industry, v.city, pg_temp.teammate(v.owner), pg_temp.before_anchor(v.days_ago, 15)
   from (values
-    -- Clients-to-be
+    -- Clients
     (1, 'Harbor & Pine Coffee', 'Coffee roaster, 14 cafes', 'Seattle, WA', 1, 610),
     (4, 'Brindlewood Hotels', 'Boutique hotels, 5 sites', 'Asheville, NC', 2, 430),
     (8, 'Ostrander Climbing', 'Climbing gyms, 6 sites', 'Salt Lake City, UT', 4, 290),
@@ -193,7 +196,7 @@ select pg_temp.template(), pg_temp.activity(v.ord), pg_temp.company(v.company),
     -- Brindlewood Hotels (Client, Theo)
     (4, 1, 2, 'Meeting', 4, 15, 'Strategy session with Claire on the spring rebrand of the Blue Ridge property.'),
     (4, 2, 4, 'Email', 11, 21, 'Sent Marcus the direct booking report. Direct share is 41%, up from 33% when we started.'),
-    (4, 1, 2, 'Call', 19, 17, 'Claire wants to talk about adding the two new properties to the retainer next quarter.'),
+    (4, 1, 2, 'Call', 19, 17, 'Claire wants to talk about a second Retainer for the two new properties.'),
     (4, 0, 5, 'Note', 29, 22, 'Photo library from the September shoot is delivered and tagged by property.'),
     (4, 2, 4, 'Meeting', 52, 16, 'Walked Marcus through the metasearch test. Keeping it on for the two mountain properties only.'),
     -- Ostrander Climbing (Client, Jonas)
@@ -203,7 +206,7 @@ select pg_temp.template(), pg_temp.activity(v.ord), pg_temp.company(v.company),
     (8, 1, 4, 'Note', 44, 21, 'Youth program ads underperform on Meta. Testing YouTube next month.'),
     (8, 0, 4, 'Email', 71, 15, 'Shared the September dashboard and a short note on rising CPMs before the holidays.'),
     -- Wrenfield Tea Co. (Client, Maya)
-    (9, 1, 1, 'Call', 6, 19, 'Tess flagged that the retainer ends in the new year. She wants a proposal that includes Amazon.'),
+    (9, 1, 1, 'Call', 6, 19, 'Tess flagged that the Retainer ends soon. She wants a Proposal that includes Amazon.'),
     (9, 2, 1, 'Meeting', 14, 21, 'Lunch with Hiro in San Diego. He is happy with DTC growth and nervous about wholesale.'),
     (9, 1, 4, 'Email', 21, 17, 'Subscription page test is live: new layout lifts trial-to-paid by 6% so far.'),
     (9, 0, 5, 'Note', 33, 22, 'Packaging refresh concepts are with the printer for samples.'),
@@ -212,18 +215,18 @@ select pg_temp.template(), pg_temp.activity(v.ord), pg_temp.company(v.company),
     (10, 1, 2, 'Email', 5, 20, 'Sent Celeste the harvest party results: 340 tickets, sold out two days early.'),
     (10, 2, 2, 'Call', 18, 18, 'Graham wants the wine club push to start before Thanksgiving. Agreed on Nov 10.'),
     (10, 1, 5, 'Meeting', 30, 17, 'Tasting room photo shoot. Light was perfect; picks coming Friday.'),
-    (10, 0, 2, 'Note', 47, 21, 'The retainer is up for renewal in January. Graham mentioned budget is flat for next year.'),
+    (10, 0, 2, 'Note', 47, 21, 'The Retainer is up for renewal soon. Graham mentioned the budget is flat.'),
     -- Marlowe Creek Dental Group (Client, Jonas)
     (11, 2, 4, 'Email', 1, 16, 'New patient bookings report: 486 in October, best month since we started.'),
     (11, 1, 4, 'Meeting', 12, 19, 'Quarterly review with Dr. Shah. She wants to test Spanish-language search ads in two clinics.'),
     (11, 2, 5, 'Call', 20, 22, 'Jordan sent new team photos for the clinic pages; we owe updated location ads.'),
     (11, 0, 4, 'Note', 39, 18, 'Call tracking shows 30% of calls go unanswered at lunch. Flagged to Dr. Shah.'),
-    (11, 1, 4, 'Email', 61, 15, 'Proposal for the two new Mesa clinics sent as an add-on to the retainer.'),
+    (11, 1, 4, 'Email', 61, 15, 'Dr. Shah asked how we would add the two new Mesa clinics.'),
     -- Tallow & Thread (Client, Ines)
     (12, 1, 5, 'Meeting', 2, 20, 'Holiday campaign shoot wrap with Maren. Gift set hero shots are approved.'),
     (12, 2, 4, 'Email', 10, 17, 'Felix: abandoned cart flow rebuild is live, early numbers look strong.'),
     (12, 1, 5, 'Call', 27, 21, 'Maren wants a candle-of-the-month subscription in the spring. Asked us to scope the launch.'),
-    (12, 0, 5, 'Note', 49, 18, 'Influencer seeding list for the winter scents is finalized: 40 creators.'),
+    (12, 0, 5, 'Note', 49, 18, 'Maren asked whether creators could help launch the winter scents. Worth scoping a seeding program.'),
     -- Bramblecote Credit Union (Client, Maya)
     (13, 1, 1, 'Meeting', 7, 16, 'Planning session with Denise for the first-time homebuyer campaign in Q1.'),
     (13, 2, 4, 'Email', 15, 19, 'Malik asked for a breakdown of new members by branch. Sent it with the October report.'),
@@ -231,7 +234,7 @@ select pg_temp.template(), pg_temp.activity(v.ord), pg_temp.company(v.company),
     (13, 0, 2, 'Note', 42, 20, 'Compliance review of the auto loan ads took three weeks. Build that into future timelines.'),
     (13, 1, 1, 'Email', 77, 15, 'Sent the annual plan draft for next year.'),
     -- Fieldvane Outdoor (Client, Wendell)
-    (14, 1, 3, 'Call', 8, 21, 'Hannah wants to add paid search for the online store. Retainer runs out in mid-December.'),
+    (14, 1, 3, 'Call', 8, 21, 'Hannah wants more paid search for the online store. The Retainer runs out this coming month.'),
     (14, 2, 4, 'Email', 17, 17, 'Reese: Shopify feed fixes are done, product ads approved again.'),
     (14, 1, 5, 'Meeting', 32, 19, 'Winter catalog creative review in Boise. Two covers to choose from.'),
     (14, 0, 3, 'Note', 55, 16, 'They are opening a tenth store in Spokane next spring.'),
@@ -247,7 +250,7 @@ select pg_temp.template(), pg_temp.activity(v.ord), pg_temp.company(v.company),
     (16, 0, 5, 'Note', 53, 20, 'Patient story video #2 is in edit.'),
     -- Lumen & Lark Eyewear (Client, Jonas)
     (17, 2, 4, 'Email', 1, 21, 'Wes: home try-on campaign hit a 4.1x return on ad spend last week.'),
-    (17, 1, 4, 'Meeting', 9, 18, 'Simone wants to test TikTok Shop for the new acetate frames.'),
+    (17, 1, 4, 'Meeting', 9, 18, 'Walked Simone through the TikTok Shop Proposal for the new acetate frames. She wants to start small.'),
     (17, 2, 5, 'Call', 22, 17, 'Creative refresh call: new lifestyle shots are due before Black Friday.'),
     (17, 0, 4, 'Note', 46, 20, 'Margin on the sun line is thin; keep bids on it conservative.'),
     -- Saltmarsh Skincare (Prospect, Maya)
@@ -432,14 +435,86 @@ select pg_temp.template(), pg_temp.proposal(v.deal, v.version), v.position, v.se
     (24, 1, 2, 'Firm brand content', 3100)
   ) as v (deal, version, position, service, fee);
 
--- A Prospect's Activities so far are all about its one Deal. Companies 1, 4
--- and 8 to 17 become Clients in ticket 07: their Activities are ongoing work,
--- not about a Deal.
+-- 15 active Retainers for 12 Clients, each from a Won Deal with an Accepted
+-- Proposal. Five end within 60 days (ticket 08's Renewals), and three were won
+-- in the last two weeks. `last_day` counts from the anchor's day.
+create temporary table sample_retainers as
+select v.*, (v.anchor_day + v.last_day + 1 - make_interval(months => v.term))::date as start_date
+  from (
+    select w.*, (select (created_at at time zone 'utc')::date from crm.sandboxes where is_template) as anchor_day
+      from (values
+        (101, 1, 1, 'Loyalty and paid social', 12, 190, 'Loyalty sign-ups and paid social for 14 cafes.', 'Paid social', 5200, 'Loyalty campaign', 3000),
+        (102, 1, 1, 'New cafe openings', 6, 180, 'Local launches for each new cafe.', 'Launch campaigns', 2200, 'Local search', 1200),
+        (103, 4, 2, 'Direct booking growth', 12, 140, 'More direct bookings across the five hotels.', 'Metasearch and search ads', 5800, 'Photography and content', 3800),
+        (104, 8, 4, 'Membership growth', 9, 12, 'New members for six gyms.', 'Paid social', 4200, 'Video series', 2200),
+        (105, 9, 1, 'DTC growth and subscriptions', 12, 41, 'Grow subscriptions and repeat orders.', 'Paid social', 4600, 'Subscription tests', 2800),
+        (106, 10, 2, 'Wine club and events', 12, 55, 'Fill the wine club and the event calendar.', 'Wine club campaigns', 3200, 'Event promotion', 2000),
+        (107, 11, 4, 'New patient search', 12, 120, 'New patient bookings for 11 clinics.', 'Local search ads', 8300, 'Clinic pages', 3500),
+        (108, 12, 5, 'Store and email', 12, 210, 'Email flows and seasonal creative.', 'Email and flows', 2600, 'Campaign creative', 2200),
+        (109, 12, 5, 'Influencer seeding', 6, 170, 'Seed each scent launch with 40 creators.', 'Creator seeding', 1900, 'Reporting', 700),
+        (110, 13, 1, 'Member growth', 12, 33, 'New members for eight branches.', 'Brand campaign', 5400, 'Branch marketing', 3500),
+        (111, 14, 3, 'Online store ads', 9, 24, 'Paid search and product ads for the online store.', 'Product ads', 4400, 'Catalog creative', 2500),
+        (112, 15, 5, 'Brand and local marketing', 12, 95, 'One warm brand across seven shops.', 'Brand and print', 2500, 'Local social', 1800),
+        (113, 16, 1, 'Local search and reviews', 12, 165, 'More appointments from search, and more reviews.', 'Local search', 3600, 'Reviews and video', 2000),
+        (114, 17, 4, 'Try-on campaign and paid social', 12, 230, 'Home try-on, from ad to purchase.', 'Paid social', 6100, 'Creative refresh', 3200),
+        (115, 17, 4, 'TikTok Shop test', 3, 89, 'A three-month test for the new acetate frames.', 'TikTok Shop', 2100, 'Creator content', 1000)
+      ) as w (n, company, owner, title, term, last_day, scope, service_1, fee_1, service_2, fee_2)
+  ) as v;
+
+insert into crm.deals (sandbox_id, id, company_id, owner_id, title, kind, stage, estimated_monthly_value, created_at, closed_on)
+select pg_temp.template(), pg_temp.deal(n), pg_temp.company(company), pg_temp.teammate(owner), title, 'New business', 'Won',
+       fee_1 + fee_2, start_date - interval '20 days', start_date
+  from sample_retainers;
+
+insert into crm.proposals (sandbox_id, id, deal_id, version, status, scope_summary, term_months, created_at, sent_at)
+select pg_temp.template(), pg_temp.proposal(n, 1), pg_temp.deal(n), 1, 'Accepted', scope, term,
+       start_date - interval '10 days', start_date - interval '9 days'
+  from sample_retainers;
+
+insert into crm.proposal_line_items (sandbox_id, proposal_id, position, service, monthly_fee)
+select pg_temp.template(), pg_temp.proposal(n, 1), item.position, item.service, item.fee
+  from sample_retainers r
+  cross join lateral (values (1, r.service_1, r.fee_1), (2, r.service_2, r.fee_2)) as item (position, service, fee);
+
+insert into crm.retainers (sandbox_id, id, company_id, deal_id, owner_id, monthly_fee, start_date, end_date)
+select pg_temp.template(), pg_temp.retainer(n), pg_temp.company(company), pg_temp.deal(n), pg_temp.teammate(owner),
+       fee_1 + fee_2, start_date, crm.last_day(start_date, term)
+  from sample_retainers;
+
+-- A Prospect's Activities are all about its one Deal. A Client's, so far, are
+-- ongoing work and not about a Deal.
 update crm.activities a
    set deal_id = d.id
   from crm.deals d
  where a.sandbox_id = pg_temp.template() and d.sandbox_id = a.sandbox_id and d.company_id = a.company_id
    and d.company_id not in (select pg_temp.company(n) from unnest(array[1, 4, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]) as n);
+
+-- How each Client's Deals were won, so every Retainer has a history.
+insert into crm.activities (sandbox_id, id, company_id, contact_id, deal_id, author_id, kind, occurred_at, text)
+select pg_temp.template(), pg_temp.activity(500 + v.ord), pg_temp.company(r.company), pg_temp.contact(r.company, v.contact),
+       pg_temp.deal(r.n), pg_temp.teammate(r.owner), v.kind::crm.activity_kind,
+       pg_temp.before_anchor(r.anchor_day - r.start_date + v.days_before_win, v.hour), v.text
+  from (select row_number() over () as ord, w.* from (values
+    (101, 1, 'Meeting', 5, 18, 'Went through the Proposal with Rosa line by line. Loyalty first, paid social beside it.'),
+    (102, 1, 'Call', 6, 17, 'Rosa wants every new cafe to open with its own launch plan. The Proposal covers it.'),
+    (102, 1, 'Email', 1, 20, 'Rosa has sign-off on the new cafe openings. She will confirm the Proposal tomorrow.'),
+    (103, 1, 'Meeting', 6, 16, 'Presented the direct booking plan to Claire. She likes that search and photography work together.'),
+    (103, 2, 'Email', 1, 19, 'Marcus has the budget approved for direct booking growth.'),
+    (104, 1, 'Call', 4, 18, 'Nina accepted the fee for membership growth and asked for a video series in the plan.'),
+    (105, 1, 'Meeting', 5, 17, 'Tess compared us with two other agencies. Our subscription tests made the difference.'),
+    (106, 2, 'Email', 3, 20, 'Graham asked for one change: event promotion all year round, not only at harvest.'),
+    (107, 1, 'Meeting', 6, 19, 'Dr. Shah brought all the clinic managers to the Proposal review. They agreed on local search first.'),
+    (108, 1, 'Call', 4, 17, 'Maren wants email and campaign creative under one roof. She is ready to start.'),
+    (109, 1, 'Meeting', 7, 18, 'Scoped the creator list for the scent launches with Maren: 40 creators.'),
+    (109, 2, 'Email', 1, 16, 'Felix confirmed the budget for influencer seeding.'),
+    (110, 1, 'Call', 5, 19, 'Denise asked for references. Sent two, and she called both.'),
+    (111, 1, 'Email', 3, 21, 'Hannah is happy with the scope: product ads now, catalog creative by season.'),
+    (112, 1, 'Meeting', 6, 18, 'Gina and Andre reviewed the Proposal at the Passyunk shop. One brand across all seven.'),
+    (113, 1, 'Call', 4, 17, 'Paula agreed to start with local search and add reviews in the same fee.'),
+    (114, 1, 'Meeting', 5, 20, 'Pitched home try-on to Simone and Wes, from the first ad to the purchase.'),
+    (115, 1, 'Email', 1, 18, 'Simone is in for a three-month TikTok Shop test.')
+  ) as w (n, contact, kind, days_before_win, hour, text)) as v
+  join sample_retainers r on r.n = v.n;
 
 -- Every sample date must be before the anchor, or a fresh Sandbox would show
 -- Activities in the future. Refuse to load a Template that breaks this.
@@ -462,8 +537,17 @@ begin
     select 1 from crm.proposals p join crm.sandboxes t on t.id = p.sandbox_id
       join crm.deals d on d.sandbox_id = p.sandbox_id and d.id = p.deal_id
      where t.is_template and p.created_at < d.created_at
+  ) or exists (
+    select 1 from crm.retainers r join crm.sandboxes t on t.id = r.sandbox_id
+     where t.is_template
+       and (t.created_at at time zone 'utc')::date not between r.start_date and r.end_date
+  ) or exists (
+    -- Nor may a Deal be older than its Company.
+    select 1 from crm.deals d join crm.sandboxes t on t.id = d.sandbox_id
+      join crm.companies c on c.sandbox_id = d.sandbox_id and c.id = d.company_id
+     where t.is_template and d.created_at < c.added_at
   ) then
-    raise exception 'A Template date is after the anchor, or a Proposal is older than its Deal.';
+    raise exception 'A Template date is after the anchor, a Retainer isn''t active, or a record is older than the one it belongs to.';
   end if;
 end;
 $$;

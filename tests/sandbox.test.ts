@@ -52,7 +52,7 @@ describe("without a live Sandbox", () => {
     const { crm } = newVisitor();
 
     expect(await crm.sandbox.status()).toEqual({ state: "none" });
-    expect(await crm.companies.list()).toEqual({ ok: false, error: "no_sandbox" });
+    expect(await crm.companies.list({ today: utcDay() })).toEqual({ ok: false, error: "no_sandbox" });
     expect(await crm.team.list()).toEqual({ ok: false, error: "no_sandbox" });
   });
 
@@ -61,7 +61,7 @@ describe("without a live Sandbox", () => {
     await expireSandbox(sandbox.id);
 
     expect(await crm.sandbox.status()).toEqual({ state: "expired" });
-    expect(await crm.companies.list()).toEqual({ ok: false, error: "sandbox_expired" });
+    expect(await crm.companies.list({ today: utcDay() })).toEqual({ ok: false, error: "sandbox_expired" });
   });
 
   it("a visitor whose Sandbox ran out can open a fresh one", async () => {
@@ -74,7 +74,7 @@ describe("without a live Sandbox", () => {
     if (!reopened.ok) return;
     expect(reopened.value.id).not.toBe(sandbox.id);
     expect((await crm.sandbox.status()).state).toBe("live");
-    const companies = await crm.companies.list();
+    const companies = await crm.companies.list({ today: utcDay() });
     expect(companies.ok && companies.value.length).toBeGreaterThan(0);
   });
 

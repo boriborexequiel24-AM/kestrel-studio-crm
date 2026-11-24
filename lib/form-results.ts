@@ -35,10 +35,17 @@ const MESSAGES: Record<string, { message: string; field?: string }> = {
   line_items_required: { message: "Add at least one line item.", field: "lineItems" },
   service_required: { message: "Name the service on every line item.", field: "service" },
   fee_invalid: { message: `Enter each monthly fee in whole dollars, from 0 to ${usd(MAX_MONTHLY_DOLLARS)}.`, field: "monthlyFee" },
+  total_too_large: { message: `Keep the line items' total to ${usd(MAX_MONTHLY_DOLLARS)} a month or less.`, field: "monthlyFee" },
   another_proposal_sent: { message: "Another Proposal is already Sent on this Deal. Mark it as Declined first." },
   proposal_not_draft: { message: "This Proposal is no longer a Draft. Reload the page." },
   proposal_not_sent: { message: "Only a Sent Proposal can be declined. Reload the page." },
   stage_unknown: { message: "Pick one of the Pipeline's Stages.", field: "stage" },
+  won_needs_sent_proposal: { message: "Won needs a Sent Proposal. Mark one as Sent first.", field: "stage" },
+  proposal_changed: { message: "The Sent Proposal changed while you were deciding. Reload the page to see the new one." },
+  deal_already_won: { message: "This Deal is already Won, so its Stage and Proposals are final. Reload the page." },
+  deal_has_retainer: { message: "This Deal started a Retainer, so it can't be deleted." },
+  end_date_invalid: { message: "Pick a real end date.", field: "endDate" },
+  end_before_start: { message: "A Retainer can't end before it starts.", field: "endDate" },
   stage_not_available: { message: "That Stage isn't available for this Deal yet.", field: "stage" },
 };
 

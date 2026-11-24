@@ -89,7 +89,7 @@ describe("a Deal", () => {
     });
     expect(opened.contacts.map((c) => c.id).sort()).toEqual(company.contacts.map((c) => c.id).sort());
     expect(opened.activities.map((a) => a.id)).toEqual([logged.id]);
-    expect(expectOk(await crm.companies.get(company.id)).activities.map((a) => a.id)).toContain(logged.id);
+    expect(expectOk(await crm.companies.get(company.id, { today: utcDay() })).activities.map((a) => a.id)).toContain(logged.id);
   });
 
   it("is not found when it doesn't exist", async () => {
@@ -171,7 +171,7 @@ describe("a Deal", () => {
     expect(await crm.deals.delete(deal.id)).toEqual({ ok: true, value: undefined });
 
     expect(await crm.deals.get(deal.id, { today: utcDay() })).toEqual({ ok: false, error: "not_found" });
-    expect(expectOk(await crm.companies.get(company.id)).activities.map((a) => a.id)).toContain(logged.id);
+    expect(expectOk(await crm.companies.get(company.id, { today: utcDay() })).activities.map((a) => a.id)).toContain(logged.id);
     expect(await crm.deals.delete(deal.id)).toEqual({ ok: false, error: "not_found" });
   });
 
@@ -216,19 +216,18 @@ describe("moving a Deal between Stages", () => {
     const { crm } = await visitorWithSandbox();
     const deal = await newDeal(crm);
 
-    expect(await crm.deals.moveToStage(deal.id, "Discovery")).toEqual({ ok: true, value: undefined });
+    expect(await crm.deals.moveToStage(deal.id, "Discovery", { today: utcDay() })).toEqual({ ok: true, value: undefined });
 
     const board = expectOk(await crm.pipeline.board({ today: utcDay(), owners: "mine" }));
     expect(board.deals.find((d) => d.id === deal.id)?.stage).toBe("Discovery");
   });
 
-  it("can't move to Won or Lost yet, or to a Stage that doesn't exist", async () => {
+  it("can't move to Lost yet, or to a Stage that doesn't exist", async () => {
     const { crm } = await visitorWithSandbox();
     const deal = await newDeal(crm);
 
-    expect(await crm.deals.moveToStage(deal.id, "Won")).toEqual({ ok: false, error: "stage_not_available" });
-    expect(await crm.deals.moveToStage(deal.id, "Lost")).toEqual({ ok: false, error: "stage_not_available" });
-    expect(await crm.deals.moveToStage(deal.id, "Pending" as never)).toEqual({ ok: false, error: "stage_unknown" });
-    expect(await crm.deals.moveToStage(crypto.randomUUID(), "Qualified")).toEqual({ ok: false, error: "not_found" });
+    expect(await crm.deals.moveToStage(deal.id, "Lost", { today: utcDay() })).toEqual({ ok: false, error: "stage_not_available" });
+    expect(await crm.deals.moveToStage(deal.id, "Pending" as never, { today: utcDay() })).toEqual({ ok: false, error: "stage_unknown" });
+    expect(await crm.deals.moveToStage(crypto.randomUUID(), "Qualified", { today: utcDay() })).toEqual({ ok: false, error: "not_found" });
   });
 });

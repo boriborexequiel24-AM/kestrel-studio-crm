@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { utcDay } from "./support/days";
 import { expectOk } from "./support/results";
 import { personaId, sampleCompany } from "./support/sample";
 import { visitorWithSandbox } from "./support/visitors";
@@ -9,7 +10,7 @@ describe("the Companies list", () => {
   it("shows Kestrel Studio's sample Companies, by name, each with an Owner from the team", async () => {
     const { crm } = await visitorWithSandbox();
 
-    const companies = expectOk(await crm.companies.list());
+    const companies = expectOk(await crm.companies.list({ today: utcDay() }));
     const team = expectOk(await crm.team.list());
 
     const names = companies.map((company) => company.name);
@@ -22,7 +23,7 @@ describe("the Companies list", () => {
   it("has sample dates that read as current, whenever the Sandbox is opened", async () => {
     const { crm } = await visitorWithSandbox();
 
-    const companies = expectOk(await crm.companies.list());
+    const companies = expectOk(await crm.companies.list({ today: utcDay() }));
 
     const now = Date.now();
     const newest = Math.max(...companies.map((company) => company.addedAt.getTime()));
@@ -41,7 +42,7 @@ describe("keeping Companies up to date", () => {
       await crm.companies.create({ name: "  Tamsin Rowe Ceramics ", industry: "Ceramics studio", city: "Tucson, AZ", ownerId }),
     );
 
-    const listed = expectOk(await crm.companies.list()).find((company) => company.id === created.id);
+    const listed = expectOk(await crm.companies.list({ today: utcDay() })).find((company) => company.id === created.id);
     expect(listed).toMatchObject({ name: "Tamsin Rowe Ceramics", industry: "Ceramics studio", city: "Tucson, AZ" });
     expect(listed?.owner.id).toBe(ownerId);
     expect(Date.now() - listed!.addedAt.getTime()).toBeLessThan(DAY);
@@ -71,7 +72,7 @@ describe("finding a Company", () => {
     const { crm } = await visitorWithSandbox();
     await crm.companies.create({ name: "Zephyrine Glassworks", ownerId: await personaId(crm) });
 
-    const found = expectOk(await crm.companies.list({ search: "  zephyr " }));
+    const found = expectOk(await crm.companies.list({ today: utcDay(), search: "  zephyr " }));
 
     expect(found.map((company) => company.name)).toEqual(["Zephyrine Glassworks"]);
   });
@@ -80,7 +81,7 @@ describe("finding a Company", () => {
     const { crm } = await visitorWithSandbox();
 
     for (const search of ["%", "_", "*", ",", "(", "a,name.eq.x", "\\"]) {
-      expect(expectOk(await crm.companies.list({ search }))).toEqual([]);
+      expect(expectOk(await crm.companies.list({ today: utcDay(), search }))).toEqual([]);
     }
   });
 
@@ -88,19 +89,10 @@ describe("finding a Company", () => {
     const { crm } = await visitorWithSandbox();
     const theo = expectOk(await crm.team.list()).find((owner) => owner.firstName === "Theo")!;
 
-    const found = expectOk(await crm.companies.list({ ownerId: theo.id }));
+    const found = expectOk(await crm.companies.list({ today: utcDay(), ownerId: theo.id }));
 
     expect(found.length).toBeGreaterThan(0);
     expect(found.every((company) => company.owner.id === theo.id)).toBe(true);
-  });
-
-  it("shows every Company as a Prospect until Retainers exist", async () => {
-    const { crm } = await visitorWithSandbox();
-    const all = expectOk(await crm.companies.list());
-
-    expect(all.every((company) => company.status === "Prospect")).toBe(true);
-    expect(expectOk(await crm.companies.list({ status: "Prospect" }))).toHaveLength(all.length);
-    expect(expectOk(await crm.companies.list({ status: "Client" }))).toEqual([]);
   });
 });
 
@@ -110,7 +102,7 @@ describe("a Company's page", () => {
 
     const company = await sampleCompany(crm, "Harbor & Pine");
 
-    expect(company).toMatchObject({ name: "Harbor & Pine Coffee", status: "Prospect" });
+    expect(company).toMatchObject({ name: "Harbor & Pine Coffee", status: "Client" });
     expect(company.contacts.length).toBeGreaterThan(0);
     expect(company.contacts[0]).toMatchObject({ name: expect.any(String), jobTitle: expect.any(String) });
     expect(company.activities.length).toBeGreaterThan(0);
@@ -136,8 +128,8 @@ describe("a Company's page", () => {
   it("is not found for an unknown Company", async () => {
     const { crm } = await visitorWithSandbox();
 
-    expect(await crm.companies.get(crypto.randomUUID())).toEqual({ ok: false, error: "not_found" });
-    expect(await crm.companies.get("not-a-company")).toEqual({ ok: false, error: "not_found" });
+    expect(await crm.companies.get(crypto.randomUUID(), { today: utcDay() })).toEqual({ ok: false, error: "not_found" });
+    expect(await crm.companies.get("not-a-company", { today: utcDay() })).toEqual({ ok: false, error: "not_found" });
   });
 
   it("can be edited", async () => {
@@ -153,7 +145,7 @@ describe("a Company's page", () => {
     });
 
     expect(updated.ok).toBe(true);
-    expect(expectOk(await crm.companies.get(company.id))).toMatchObject({
+    expect(expectOk(await crm.companies.get(company.id, { today: utcDay() }))).toMatchObject({
       name: "Harbor & Pine Roasters",
       industry: "Coffee roaster, 15 cafes",
       city: "Tacoma, WA",
@@ -170,13 +162,16 @@ describe("a Company's page", () => {
     expect(updated).toEqual({ ok: false, error: "name_required" });
   });
 
-  it("can be deleted, with its Contacts and Activities", async () => {
+  it("can be deleted, with its Contacts, Activities, Deals and Retainers", async () => {
     const { crm } = await visitorWithSandbox();
     const company = await sampleCompany(crm, "Harbor & Pine");
+    const retainers = expectOk(await crm.retainers.list({ today: utcDay() }));
 
     expect(await crm.companies.delete(company.id)).toEqual({ ok: true, value: undefined });
 
-    expect(await crm.companies.get(company.id)).toEqual({ ok: false, error: "not_found" });
+    expect(await crm.companies.get(company.id, { today: utcDay() })).toEqual({ ok: false, error: "not_found" });
+    expect(await crm.deals.get(company.deals[0].id, { today: utcDay() })).toEqual({ ok: false, error: "not_found" });
+    expect(expectOk(await crm.retainers.list({ today: utcDay() }))).toEqual(retainers.filter((each) => each.company.id !== company.id));
     expect(await crm.companies.delete(company.id)).toEqual({ ok: false, error: "not_found" });
   });
 });
