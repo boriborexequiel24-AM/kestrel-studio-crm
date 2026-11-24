@@ -155,6 +155,12 @@ workflow demo.
   claimed day to within one. The `tz` cookie is set on every page, so the landing page has it.
 - **A Deal's link is `/deals/[id]`, which renders the Pipeline with the Deal open in a Sheet**
   (decided 2026-11-24). Back, close and shared links all work without parallel routes.
+- **Only a Draft Proposal can be edited; a Sent one is fixed and a Declined one is final** (decided
+  2026-11-24). It's a real offer; a change means a new version.
+- **Once a Proposal is sent, the Deal's Company is fixed** (decided 2026-11-24). The offer was made
+  to that Company. Same rule as a Deal with Activities.
+- **Monthly values and fees are whole dollars up to $10 million; terms are 1 to 60 months** (decided
+  2026-11-24). A typo can't overflow the database.
 - **Every `crm` function revokes PUBLIC execute itself** (decided 2026-11-24). Postgres grants it
   by default and a per-schema default privilege can't undo that; found in review of ticket 02.
 

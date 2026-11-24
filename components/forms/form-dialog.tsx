@@ -45,7 +45,8 @@ function HiddenFields({ fields }: { fields: Record<string, string> }) {
   return Object.entries(fields).map(([name, value]) => <input key={name} type="hidden" name={name} value={value} />);
 }
 
-function FormError({ state }: { state: FormState }) {
+/** Why the last save was refused, if it was. */
+export function FormError({ state }: { state: FormState }) {
   if (state.status !== "error") return null;
   return (
     <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-[13px] font-semibold text-destructive">

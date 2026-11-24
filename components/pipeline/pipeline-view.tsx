@@ -13,6 +13,7 @@ import { requireLiveSandbox, valueOrLanding, landingFor } from "@/lib/crm/server
 import { dueLabel, fullName, usd, usdShort } from "@/lib/format";
 import { visitorToday } from "@/lib/visitor-day";
 import { DealSheetFrame } from "./deal-sheet-frame";
+import { ProposalCard } from "./proposal-card";
 import { DeleteDealButton, EditDealButton, NewDealButton, NextStepButton, type DealFormOptions } from "./deal-forms";
 import { STAGE_COLOR } from "./stage";
 import { MoveToMenu, StageSelect } from "./stage-controls";
@@ -161,28 +162,37 @@ async function Board({ searchParams, openDealId }: { searchParams: SearchParams;
 }
 
 function KpiStrip({ board }: { board: PipelineBoard }) {
-  const overdue = board.kpis.overdueNextSteps;
+  const { openMonthlyValue, openDeals, proposalsOut, overdueNextSteps } = board.kpis;
+  const deals = (count: number) => (count === 1 ? "Deal" : "Deals");
   return (
-    <dl className="mt-5 grid gap-3 sm:grid-cols-2">
-      <div className="rounded-xl border border-border bg-card p-4">
-        <dt className="flex items-center gap-2 text-[13px] font-semibold text-muted-foreground">
-          <span className="h-3 w-1 rounded-full bg-primary" aria-hidden /> Open pipeline
-        </dt>
-        <dd className="mt-1 text-[26px] font-bold tabular-nums">{usd(board.kpis.openMonthlyValue)}</dd>
-        <dd className="text-[12px] text-muted-foreground">
-          {board.kpis.openDeals} open {board.kpis.openDeals === 1 ? "Deal" : "Deals"}, a month
-        </dd>
-      </div>
-      <div className={`rounded-xl border bg-card p-4 ${overdue ? "border-destructive/40" : "border-border"}`}>
-        <dt className="flex items-center gap-2 text-[13px] font-semibold text-muted-foreground">
-          <span className={`h-3 w-1 rounded-full ${overdue ? "bg-destructive" : "bg-stage-new"}`} aria-hidden /> Overdue Next steps
-        </dt>
-        <dd className={`mt-1 text-[26px] font-bold tabular-nums ${overdue ? "text-destructive" : ""}`}>{overdue}</dd>
-        <dd className={`text-[12px] ${overdue ? "font-semibold text-destructive" : "text-muted-foreground"}`}>
-          {overdue ? "Overdue: needs action today" : "All on time"}
-        </dd>
-      </div>
+    <dl className="mt-5 grid gap-3 sm:grid-cols-3">
+      <Kpi label="Open pipeline" value={usd(openMonthlyValue)} detail={`${openDeals} open ${deals(openDeals)}, a month`} bar="bg-primary" />
+      <Kpi
+        label="Proposals out"
+        value={usd(proposalsOut.monthlyValue)}
+        detail={`${proposalsOut.deals} ${deals(proposalsOut.deals)} with a Sent Proposal, a month`}
+        bar="bg-stage-proposal-sent"
+      />
+      <Kpi
+        label="Overdue Next steps"
+        value={String(overdueNextSteps)}
+        detail={overdueNextSteps ? "Overdue: needs action today" : "All on time"}
+        bar={overdueNextSteps ? "bg-destructive" : "bg-stage-new"}
+        alert={overdueNextSteps > 0}
+      />
     </dl>
+  );
+}
+
+function Kpi({ label, value, detail, bar, alert = false }: { label: string; value: string; detail: string; bar: string; alert?: boolean }) {
+  return (
+    <div className={`rounded-xl border bg-card p-4 ${alert ? "border-destructive/40" : "border-border"}`}>
+      <dt className="flex items-center gap-2 text-[13px] font-semibold text-muted-foreground">
+        <span className={`h-3 w-1 rounded-full ${bar}`} aria-hidden /> {label}
+      </dt>
+      <dd className={`mt-1 text-[26px] font-bold tabular-nums ${alert ? "text-destructive" : ""}`}>{value}</dd>
+      <dd className={`text-[12px] ${alert ? "font-semibold text-destructive" : "text-muted-foreground"}`}>{detail}</dd>
+    </div>
   );
 }
 
@@ -248,10 +258,12 @@ async function DealSheet({ id, searchParams }: { id: string; searchParams: Searc
           Deal for {deal.company.name}, in {deal.stage}
         </SheetDescription>
         <div className="mt-1 flex flex-wrap items-start justify-between gap-3">
-          <StageSelect dealId={deal.id} stage={deal.stage} />
+          <StageSelect dealId={deal.id} stage={deal.stage} hasSentProposal={deal.sentProposalVersion !== null} />
           <div className="text-right">
             <div className="text-[24px] leading-none font-bold tabular-nums">{usd(deal.monthlyValue)}</div>
-            <div className="mt-1 text-[12px] text-muted-foreground">a month, estimated</div>
+            <div className="mt-1 text-[12px] text-muted-foreground">
+              {deal.sentProposalVersion ? `a month, Proposal v${deal.sentProposalVersion}` : "a month, estimated"}
+            </div>
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -264,7 +276,7 @@ async function DealSheet({ id, searchParams }: { id: string; searchParams: Searc
               estimatedMonthlyValue: deal.estimatedMonthlyValue,
               nextStep: deal.nextStep?.text ?? "",
               nextStepDue: deal.nextStep?.due ?? null,
-              companyFixed: deal.hasActivities,
+              companyFixedBy: deal.companyFixedBy,
             }}
             options={options}
           />
@@ -275,7 +287,10 @@ async function DealSheet({ id, searchParams }: { id: string; searchParams: Searc
       <div className="space-y-5 p-5">
         <StageStepper deal={deal} />
         <NextStepCard deal={deal} today={today} />
-        <PeopleCard deal={deal} />
+        <div className="grid items-start gap-5 sm:grid-cols-2">
+          <ProposalCard deal={deal} />
+          <PeopleCard deal={deal} />
+        </div>
         <DealActivities deal={deal} />
       </div>
     </DealSheetFrame>
@@ -335,7 +350,7 @@ function PeopleCard({ deal }: { deal: DealDetail }) {
         <Users className="size-4" aria-hidden /> People
       </h3>
       {deal.contacts.length ? (
-        <ul className="mt-2 grid gap-2.5 sm:grid-cols-2">
+        <ul className="mt-2 grid gap-2.5">
           {deal.contacts.map((contact) => (
             <li key={contact.id} className="text-[14px] leading-tight">
               <b>{contact.name}</b>

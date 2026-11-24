@@ -1,26 +1,11 @@
 import { describe, expect, it } from "vitest";
-import type { Crm } from "@/lib/crm";
 import { utcDay } from "./support/days";
+import { newDeal } from "./support/deals";
 import { expectOk } from "./support/results";
 import { personaId, sampleCompany } from "./support/sample";
 import { visitorWithSandbox } from "./support/visitors";
 
 const OPEN_STAGES = ["New", "Qualified", "Discovery", "Proposal sent", "Negotiation"];
-
-async function newDeal(crm: Crm, overrides: Partial<Parameters<Crm["deals"]["create"]>[0]> = {}) {
-  const company = await sampleCompany(crm, "Saltmarsh");
-  return expectOk(
-    await crm.deals.create({
-      companyId: company.id,
-      ownerId: await personaId(crm),
-      title: "Test Deal",
-      estimatedMonthlyValue: 5000,
-      nextStep: "Send the deck",
-      nextStepDue: utcDay(3),
-      ...overrides,
-    }),
-  );
-}
 
 describe("the Pipeline board", () => {
   it("shows the agency's open Deals across every open Stage and every Owner", async () => {
@@ -148,6 +133,7 @@ describe("a Deal", () => {
     expect(await crm.deals.create({ ...base, title: " " })).toEqual({ ok: false, error: "title_required" });
     expect(await crm.deals.create({ ...base, estimatedMonthlyValue: -5 })).toEqual({ ok: false, error: "value_invalid" });
     expect(await crm.deals.create({ ...base, estimatedMonthlyValue: 10.5 })).toEqual({ ok: false, error: "value_invalid" });
+    expect(await crm.deals.create({ ...base, estimatedMonthlyValue: 99_999_999_999 })).toEqual({ ok: false, error: "value_invalid" });
     expect(await crm.deals.create({ ...base, companyId: crypto.randomUUID() })).toEqual({ ok: false, error: "company_not_found" });
     expect(await crm.deals.create({ ...base, ownerId: crypto.randomUUID() })).toEqual({ ok: false, error: "owner_not_found" });
     expect(await crm.deals.create({ ...base, nextStep: "Call", nextStepDue: "next week" })).toEqual({
@@ -171,7 +157,7 @@ describe("a Deal", () => {
       ok: true,
       value: undefined,
     });
-    expect(expectOk(await crm.deals.get(deal.id, { today: utcDay() })).hasActivities).toBe(true);
+    expect(expectOk(await crm.deals.get(deal.id, { today: utcDay() })).companyFixedBy).toBe("Activities");
   });
 
   it("can be deleted, keeping its Activities on the Company", async () => {

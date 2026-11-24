@@ -1,6 +1,7 @@
 import "server-only";
 import type { PostgrestError, SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/database.types";
+import { MAX_MONTHLY_DOLLARS } from "./terms";
 
 export type CrmSupabaseClient = SupabaseClient<Database>;
 export type CrmDb = ReturnType<CrmSupabaseClient["schema"]>;
@@ -41,6 +42,11 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 /** Ids come from URLs and forms; anything that isn't a uuid can't name a record. */
 export function isId(id: string): boolean {
   return UUID.test(id);
+}
+
+/** Monthly values and fees are whole US dollars, from 0 to the limit. */
+export function isWholeDollars(dollars: number): boolean {
+  return Number.isInteger(dollars) && dollars >= 0 && dollars <= MAX_MONTHLY_DOLLARS;
 }
 
 /** A row the insert or update pointed at doesn't exist in this Sandbox. */

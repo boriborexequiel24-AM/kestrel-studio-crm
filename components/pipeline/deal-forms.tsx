@@ -6,6 +6,7 @@ import type { OwnerOption } from "@/components/companies/owner-options";
 import { SelectField, TextField } from "@/components/forms/fields";
 import { ConfirmDeleteDialog, FormDialog } from "@/components/forms/form-dialog";
 import { Button } from "@/components/ui/button";
+import { MAX_MONTHLY_DOLLARS } from "@/lib/crm/terms";
 
 type CompanyOption = { value: string; label: string };
 
@@ -18,8 +19,8 @@ export type EditableDeal = {
   estimatedMonthlyValue: number;
   nextStep: string;
   nextStepDue: string | null;
-  /** Once a Deal has Activities, its Company can't change. */
-  companyFixed: boolean;
+  /** Why the Company can't change, if it can't. */
+  companyFixedBy: "Activities" | "Proposal" | null;
 };
 
 /** The choices a Deal form offers. */
@@ -30,12 +31,16 @@ function DealFields({ options, deal }: { options: DealFormOptions; deal?: Editab
   return (
     <>
       <TextField label="Title" name="title" defaultValue={deal?.title} required autoComplete="off" placeholder="Spring launch campaign" />
-      {deal?.companyFixed ? (
+      {deal?.companyFixedBy ? (
         <div className="grid gap-1.5">
           <p className="text-[13px] font-semibold">Company</p>
           <p className="text-[14px]">
             {companies.find((company) => company.value === deal.companyId)?.label}
-            <span className="block text-[13px] text-muted-foreground">Fixed, because this Deal has Activities about it.</span>
+            <span className="block text-[13px] text-muted-foreground">
+              {deal.companyFixedBy === "Activities"
+                ? "Fixed, because this Deal has Activities about it."
+                : "Fixed, because a Proposal was sent to this Company."}
+            </span>
           </p>
           <input type="hidden" name="companyId" value={deal.companyId} />
         </div>
@@ -49,6 +54,7 @@ function DealFields({ options, deal }: { options: DealFormOptions; deal?: Editab
         name="estimatedMonthlyValue"
         type="number"
         min={0}
+        max={MAX_MONTHLY_DOLLARS}
         step={1}
         inputMode="numeric"
         required

@@ -11,13 +11,17 @@ function mineQuery(form: FormData) {
   return text(form, "mine") === "1" ? "?mine=1" : "";
 }
 
+/** Empty or non-numeric text becomes NaN, which the CRM module refuses with the right message. */
+function toNumber(value: string): number {
+  return value.trim() === "" ? Number.NaN : Number(value);
+}
+
 function dealFields(form: FormData) {
-  const value = text(form, "estimatedMonthlyValue").trim();
   return {
     companyId: text(form, "companyId"),
     ownerId: text(form, "ownerId"),
     title: text(form, "title"),
-    estimatedMonthlyValue: value === "" ? Number.NaN : Number(value),
+    estimatedMonthlyValue: toNumber(text(form, "estimatedMonthlyValue")),
     nextStep: text(form, "nextStep"),
     nextStepDue: text(form, "nextStepDue") || null,
   };
@@ -53,4 +57,36 @@ export async function setNextStep(_state: FormState, form: FormData): Promise<Fo
     await crm.deals.setNextStep(text(form, "dealId"), { text: text(form, "nextStep"), due: text(form, "nextStepDue") || null }),
     form,
   );
+}
+
+function proposalFields(form: FormData) {
+  const fees = form.getAll("monthlyFee");
+  return {
+    scopeSummary: text(form, "scopeSummary"),
+    termMonths: toNumber(text(form, "termMonths")),
+    lineItems: form.getAll("service").map((service, index) => ({
+      service: String(service),
+      monthlyFee: toNumber(String(fees[index] ?? "")),
+    })),
+  };
+}
+
+export async function createProposal(_state: FormState, form: FormData): Promise<FormState> {
+  const crm = await getCrm();
+  return toFormState(await crm.proposals.createDraft(text(form, "dealId"), proposalFields(form)), form);
+}
+
+export async function editProposal(_state: FormState, form: FormData): Promise<FormState> {
+  const crm = await getCrm();
+  return toFormState(await crm.proposals.editDraft(text(form, "proposalId"), proposalFields(form)), form);
+}
+
+export async function sendProposal(_state: FormState, form: FormData): Promise<FormState> {
+  const crm = await getCrm();
+  return toFormState(await crm.proposals.markSent(text(form, "proposalId")), form);
+}
+
+export async function declineProposal(_state: FormState, form: FormData): Promise<FormState> {
+  const crm = await getCrm();
+  return toFormState(await crm.proposals.markDeclined(text(form, "proposalId")), form);
 }

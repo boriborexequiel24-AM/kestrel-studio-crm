@@ -5,6 +5,7 @@ import { companiesArea } from "./companies";
 import { contactsArea } from "./contacts";
 import { dealsArea, pipelineArea } from "./deals";
 import type { CrmContext, CrmSupabaseClient } from "./core";
+import { proposalsArea } from "./proposals";
 import { sandboxArea, type SandboxLimits } from "./sandbox";
 import { teamArea } from "./team";
 
@@ -30,6 +31,8 @@ export {
   ACTIVITY_KINDS,
   COMPANY_STATUSES,
   DEAL_STAGES,
+  MAX_MONTHLY_DOLLARS,
+  MAX_TERM_MONTHS,
   OPEN_STAGES,
   isOpenStage,
   type ActivityKind,
@@ -38,8 +41,10 @@ export {
   type DealKind,
   type DealStage,
   type OpenStage,
+  type ProposalStatus,
 } from "./terms";
 export type { ContactInput } from "./contacts";
+export type { LineItem, Proposal, ProposalInput } from "./proposals";
 export type { ActivityFields, ActivityInput } from "./activities";
 
 export type CrmDeps = { ai?: AiProvider; limits: SandboxLimits };
@@ -57,6 +62,7 @@ export function createCrm(supabase: CrmSupabaseClient, deps: CrmDeps) {
     activities: activitiesArea(context),
     deals: dealsArea(context),
     pipeline: pipelineArea(context),
+    proposals: proposalsArea(context),
   };
 }
 

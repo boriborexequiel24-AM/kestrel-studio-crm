@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import type { FormState } from "@/components/forms/form-state";
 import type { NoLiveSandbox, Result } from "@/lib/crm";
 import { landingFor } from "@/lib/crm/server";
+import { MAX_MONTHLY_DOLLARS, MAX_TERM_MONTHS } from "@/lib/crm/terms";
+import { usd } from "@/lib/format";
 
 // What each rule the CRM module can report means to Maya, and which form field it belongs to.
 const MESSAGES: Record<string, { message: string; field?: string }> = {
@@ -18,12 +20,24 @@ const MESSAGES: Record<string, { message: string; field?: string }> = {
   },
   contact_not_found: { message: "That Contact doesn't work at this Company.", field: "contactId" },
   deal_not_found: { message: "That Deal isn't about this Company." },
+  company_fixed_by_proposal: {
+    message: "A Proposal was already sent to this Deal's Company, so its Company can't change.",
+    field: "companyId",
+  },
   text_required: { message: "Write what happened.", field: "text" },
   kind_unknown: { message: "Pick Email, Call, Meeting or Note.", field: "kind" },
   date_required: { message: "Pick a date.", field: "date" },
   date_in_future: { message: "An Activity can't be dated in the future.", field: "date" },
   date_invalid: { message: "Pick a real date.", field: "nextStepDue" },
-  value_invalid: { message: "Enter the Monthly value in whole dollars, 0 or more.", field: "estimatedMonthlyValue" },
+  value_invalid: { message: `Enter the Monthly value in whole dollars, from 0 to ${usd(MAX_MONTHLY_DOLLARS)}.`, field: "estimatedMonthlyValue" },
+  scope_required: { message: "Say what the Proposal covers.", field: "scopeSummary" },
+  term_invalid: { message: `Enter a term from 1 to ${MAX_TERM_MONTHS} months.`, field: "termMonths" },
+  line_items_required: { message: "Add at least one line item.", field: "lineItems" },
+  service_required: { message: "Name the service on every line item.", field: "service" },
+  fee_invalid: { message: `Enter each monthly fee in whole dollars, from 0 to ${usd(MAX_MONTHLY_DOLLARS)}.`, field: "monthlyFee" },
+  another_proposal_sent: { message: "Another Proposal is already Sent on this Deal. Mark it as Declined first." },
+  proposal_not_draft: { message: "This Proposal is no longer a Draft. Reload the page." },
+  proposal_not_sent: { message: "Only a Sent Proposal can be declined. Reload the page." },
   stage_unknown: { message: "Pick one of the Pipeline's Stages.", field: "stage" },
   stage_not_available: { message: "That Stage isn't available for this Deal yet.", field: "stage" },
 };

@@ -6,7 +6,8 @@
 -- Safe to re-run: it replaces the whole Template.
 
 -- Readable ids: Company 7 is ...00000000c007, its 2nd Contact ...0000000d0072,
--- Teammate 1 (Maya) ...0000000000a1, Deal 3 ...0000000e0003, Activity 12 ...0000000a0012.
+-- Teammate 1 (Maya) ...0000000000a1, Deal 3 ...0000000e0003,
+-- its 2nd Proposal ...0000000f0032, Activity 12 ...0000000a0012.
 create function pg_temp.template() returns uuid language sql immutable
   as $$ select '00000000-0000-4000-8000-000000000000'::uuid $$;
 create function pg_temp.teammate(n int) returns uuid language sql immutable
@@ -17,6 +18,8 @@ create function pg_temp.contact(company int, n int) returns uuid language sql im
   as $$ select ('00000000-0000-4000-8000-0000000d' || lpad(company::text, 3, '0') || n)::uuid $$;
 create function pg_temp.deal(n int) returns uuid language sql immutable
   as $$ select ('00000000-0000-4000-8000-0000000e' || lpad(n::text, 4, '0'))::uuid $$;
+create function pg_temp.proposal(deal int, version int) returns uuid language sql immutable
+  as $$ select ('00000000-0000-4000-8000-0000000f' || lpad(deal::text, 3, '0') || version)::uuid $$;
 create function pg_temp.activity(n bigint) returns uuid language sql immutable
   as $$ select ('00000000-0000-4000-8000-0000000a' || lpad(n::text, 4, '0'))::uuid $$;
 -- A moment `days` before the anchor, at `hour` UTC (US business hours are about 13 to 23 UTC).
@@ -277,7 +280,7 @@ select pg_temp.template(), pg_temp.activity(v.ord), pg_temp.company(v.company),
     (20, 2, 1, 'Email', 7, 19, 'Keisha sent their private events pricing. Events are their best margin.'),
     (20, 1, 1, 'Meeting', 13, 23, 'Dinner at the Magazine St. site with Etienne. Good chemistry.'),
     -- Tidebrook Insurance (Prospect, Wendell)
-    (21, 1, 3, 'Email', 15, 16, 'Frank went quiet after our proposal outline. Sent a short nudge.'),
+    (21, 1, 3, 'Email', 15, 16, 'Frank went quiet after the revised Proposal. Sent a short nudge.'),
     (21, 2, 3, 'Call', 40, 18, 'Amy explained how they get leads today: mostly referrals and a dated website.'),
     (21, 1, 3, 'Meeting', 70, 17, 'Coffee with Frank in Charleston. He is curious but cautious.'),
     -- Oakhurst Learning (Prospect, Ines)
@@ -383,6 +386,52 @@ select pg_temp.template(), pg_temp.deal(v.n), c.id, pg_temp.teammate(v.owner), v
   ) as v (n, company, owner, title, stage, value, next_step, due)
   join crm.companies c on c.sandbox_id = pg_temp.template() and c.id = pg_temp.company(v.company);
 
+-- A Sent Proposal for every Deal in Proposal sent or Negotiation. Deal 9's
+-- first one was declined and revised.
+insert into crm.proposals (sandbox_id, id, deal_id, version, status, scope_summary, term_months, created_at, sent_at)
+select pg_temp.template(), pg_temp.proposal(v.deal, v.version), pg_temp.deal(v.deal), v.version,
+       v.status::crm.proposal_status, v.scope, v.term,
+       pg_temp.before_anchor(v.sent_days_ago + 1, 16), pg_temp.before_anchor(v.sent_days_ago, 18)
+  from (values
+    (4, 1, 'Sent', 4, 12, 'One team for the brand refresh and paid media, with the Evanston showroom opening first.'),
+    (5, 1, 'Sent', 14, 12, 'Patient growth for all 9 clinics, with a compliance check on everything we publish.'),
+    (8, 1, 'Sent', 5, 6, 'Fill weeknight tables at the two newer sites and grow private events.'),
+    (9, 1, 'Declined', 30, 12, 'A new website and always-on search for personal and business lines.'),
+    (9, 2, 'Sent', 20, 6, 'Search only to start, with a small landing page set instead of a new website.'),
+    (15, 1, 'Sent', 3, 12, 'A premium look for cosmetic services, from first click to booked consultation.'),
+    (17, 1, 'Sent', 9, 9, 'A brand and portfolio that attract fewer, bigger projects.'),
+    (21, 1, 'Sent', 2, 12, 'Rebuild search and the quote journey to bring cost per install down.'),
+    (24, 1, 'Sent', 12, 12, 'An associate recruiting campaign, with a firm brand to back it up.')
+  ) as v (deal, version, status, sent_days_ago, term, scope);
+
+insert into crm.proposal_line_items (sandbox_id, proposal_id, position, service, monthly_fee)
+select pg_temp.template(), pg_temp.proposal(v.deal, v.version), v.position, v.service, v.fee
+  from (values
+    (4, 1, 1, 'Paid search and social', 6500),
+    (4, 1, 2, 'Brand refresh', 4500),
+    (4, 1, 3, 'Strategy and reporting', 3500),
+    (5, 1, 1, 'Local search for 9 clinics', 5800),
+    (5, 1, 2, 'Patient content', 4200),
+    (5, 1, 3, 'Compliance review', 1800),
+    (8, 1, 1, 'Local paid social', 2800),
+    (8, 1, 2, 'Private events pages', 1500),
+    (8, 1, 3, 'Photography', 1400),
+    (9, 1, 1, 'Website', 3900),
+    (9, 1, 2, 'Search ads', 2400),
+    (9, 2, 1, 'Search ads', 2900),
+    (9, 2, 2, 'Landing pages', 1700),
+    (15, 1, 1, 'Search for cosmetic services', 4200),
+    (15, 1, 2, 'Photo and video', 3600),
+    (15, 1, 3, 'Landing pages', 1900),
+    (17, 1, 1, 'Brand refresh', 3800),
+    (17, 1, 2, 'Portfolio website', 2600),
+    (21, 1, 1, 'Paid search rebuild', 8200),
+    (21, 1, 2, 'Landing page testing', 5200),
+    (21, 1, 3, 'Lead quality reporting', 3000),
+    (24, 1, 1, 'Recruiting campaign', 4200),
+    (24, 1, 2, 'Firm brand content', 3100)
+  ) as v (deal, version, position, service, fee);
+
 -- A Prospect's Activities so far are all about its one Deal. Companies 1, 4
 -- and 8 to 17 become Clients in ticket 07: their Activities are ongoing work,
 -- not about a Deal.
@@ -405,8 +454,16 @@ begin
   ) or exists (
     select 1 from crm.deals d join crm.sandboxes t on t.id = d.sandbox_id
      where t.is_template and d.created_at > t.created_at
+  ) or exists (
+    select 1 from crm.proposals p join crm.sandboxes t on t.id = p.sandbox_id
+     where t.is_template and p.sent_at > t.created_at
+  ) or exists (
+    -- Nor may an offer be older than its Deal.
+    select 1 from crm.proposals p join crm.sandboxes t on t.id = p.sandbox_id
+      join crm.deals d on d.sandbox_id = p.sandbox_id and d.id = p.deal_id
+     where t.is_template and p.created_at < d.created_at
   ) then
-    raise exception 'A Template date is after the anchor, so it would show in the future.';
+    raise exception 'A Template date is after the anchor, or a Proposal is older than its Deal.';
   end if;
 end;
 $$;

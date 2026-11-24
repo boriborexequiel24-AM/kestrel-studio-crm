@@ -14,6 +14,12 @@ export const isOpenStage = (stage: DealStage): stage is OpenStage => (OPEN_STAGE
 
 export type DealKind = "New business" | "Renewal";
 
+/** Monthly values and fees are whole US dollars, up to this. */
+export const MAX_MONTHLY_DOLLARS = 10_000_000;
+export const MAX_TERM_MONTHS = 60;
+
+export type ProposalStatus = "Draft" | "Sent" | "Accepted" | "Declined";
+
 /** Derived, never stored: a Client has an active Retainer, a Prospect doesn't. */
 export type CompanyStatus = "Client" | "Prospect";
 export const COMPANY_STATUSES: readonly CompanyStatus[] = ["Client", "Prospect"];

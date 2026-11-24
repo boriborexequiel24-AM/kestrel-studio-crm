@@ -8,15 +8,17 @@ import {
   fail,
   isId,
   isMissingReference,
+  isWholeDollars,
   ok,
   toOwnerRef,
   unexpected,
   type CrmContext,
   type OwnerRef,
 } from "./core";
+import { PROPOSAL_COLUMNS, monthlyTotal, toProposal, type Proposal } from "./proposals";
 import { listTeam, type Owner } from "./team";
 import type { PostgrestError } from "@supabase/supabase-js";
-import { DEAL_STAGES, OPEN_STAGES, isOpenStage, type CompanyStatus, type Day, type DealKind, type DealStage, type OpenStage } from "./terms";
+import { DEAL_STAGES, OPEN_STAGES, isOpenStage, type CompanyStatus, type Day, type DealKind, type DealStage, type OpenStage, type ProposalStatus } from "./terms";
 
 export type NextStep = { text: string; due: Day | null; overdue: boolean };
 
@@ -26,8 +28,10 @@ export type DealCard = {
   title: string;
   kind: DealKind;
   stage: DealStage;
-  /** USD a month: the estimate until a Proposal is sent (ticket 06). */
+  /** USD a month: the Sent Proposal's total, or the estimate when no Proposal is Sent. */
   monthlyValue: number;
+  /** The Proposal the Monthly value comes from; null means it's the estimate. */
+  sentProposalVersion: number | null;
   company: { id: string; name: string };
   owner: OwnerRef;
   nextStep: NextStep | null;
@@ -39,12 +43,20 @@ export type DealDetail = DealCard & {
   estimatedMonthlyValue: number;
   contacts: Contact[];
   activities: Activity[];
-  /** Once a Deal has Activities, its Company can't change. */
-  hasActivities: boolean;
+  /** Newest version first. */
+  proposals: Proposal[];
+  /** Why the Deal's Company can't change: Activities about it, or a Proposal sent to that Company. */
+  companyFixedBy: "Activities" | "Proposal" | null;
 };
 
 export type PipelineBoard = {
-  kpis: { openMonthlyValue: number; openDeals: number; overdueNextSteps: number };
+  kpis: {
+    openMonthlyValue: number;
+    openDeals: number;
+    overdueNextSteps: number;
+    /** Deals with a Sent Proposal, and what those offers add up to a month. */
+    proposalsOut: { deals: number; monthlyValue: number };
+  };
   stages: { stage: OpenStage; count: number; monthlyValue: number }[];
   owners: { owner: Owner; monthlyValue: number }[];
   deals: DealCard[];
@@ -60,7 +72,8 @@ export type DealInput = {
 };
 
 const DEAL_COLUMNS = `id, title, kind, stage, estimated_monthly_value, next_step, next_step_due,
-  company:companies!inner(id, name), owner:teammates!inner(${OWNER_REF_COLUMNS})`;
+  company:companies!inner(id, name), owner:teammates!inner(${OWNER_REF_COLUMNS}),
+  proposals(version, status, line_items:proposal_line_items(monthly_fee))`;
 
 export function dealsArea({ db, inLiveSandbox }: CrmContext) {
   async function findDeal(id: string) {
@@ -69,19 +82,28 @@ export function dealsArea({ db, inLiveSandbox }: CrmContext) {
     return data;
   }
 
+  /** Whether a Proposal on this Deal was already sent to a Company other than this one. */
+  async function offeredToAnotherCompany(id: string, companyId: string) {
+    const { data, error } = await db.from("deals").select("company_id, proposals(sent_at)").eq("id", id).maybeSingle();
+    if (error) unexpected(error);
+    return data !== null && data.company_id !== companyId && data.proposals.some((proposal) => proposal.sent_at !== null);
+  }
+
   return {
-    /** One Deal with its Company, the Company's Contacts and the Deal's Activities (newest first). */
+    /** One Deal with its Company, the Company's Contacts, and the Deal's Proposals and Activities (newest first). */
     get: (id: string, view: { today: Day }) =>
       inLiveSandbox(async () => {
         if (!isId(id)) return fail("not_found");
         const deal = await findDeal(id);
         if (!deal) return fail("not_found");
-        const [contacts, activities] = await Promise.all([
+        const [contacts, activities, proposals] = await Promise.all([
           db.from("contacts").select(CONTACT_COLUMNS).eq("company_id", deal.company.id).order("name"),
           db.from("activities").select(ACTIVITY_COLUMNS).eq("deal_id", id).order("occurred_at", { ascending: false }),
+          db.from("proposals").select(PROPOSAL_COLUMNS).eq("deal_id", id).order("version", { ascending: false }),
         ]);
         if (contacts.error) unexpected(contacts.error);
         if (activities.error) unexpected(activities.error);
+        if (proposals.error) unexpected(proposals.error);
         const card = toCard(deal, view.today);
         return ok<DealDetail>({
           ...card,
@@ -89,7 +111,12 @@ export function dealsArea({ db, inLiveSandbox }: CrmContext) {
           estimatedMonthlyValue: deal.estimated_monthly_value,
           contacts: contacts.data.map(toContact),
           activities: activities.data.map(toActivity),
-          hasActivities: activities.data.length > 0,
+          proposals: proposals.data.map(toProposal),
+          companyFixedBy: activities.data.length
+            ? "Activities"
+            : proposals.data.some((proposal) => proposal.sent_at !== null)
+              ? "Proposal"
+              : null,
         });
       }),
 
@@ -103,12 +130,13 @@ export function dealsArea({ db, inLiveSandbox }: CrmContext) {
         return ok({ id: data.id });
       }),
 
-    /** Edits a Deal. Its Company stays fixed once the Deal has Activities about it. */
+    /** Edits a Deal. Its Company stays fixed once the Deal has Activities or a Proposal was sent. */
     update: (id: string, input: DealInput) =>
       inLiveSandbox(async () => {
         if (!isId(id)) return fail("not_found");
         const fields = checkFields(input);
         if (!fields.ok) return fields;
+        if (await offeredToAnotherCompany(id, input.companyId)) return fail("company_fixed_by_proposal");
         const { data, error } = await db.from("deals").update(fields.value).eq("id", id).select("id");
         if (error) return referenceFailure(error);
         return data.length ? ok(undefined) : fail("not_found");
@@ -171,12 +199,14 @@ export function pipelineArea({ db, inLiveSandbox }: CrmContext) {
         const ownerIds = new Set(owners.map((owner) => owner.id));
         const cards = deals.data.map((row) => toCard(row, view.today)).filter((card) => ownerIds.has(card.owner.id));
         const sum = (list: DealCard[]) => list.reduce((total, card) => total + card.monthlyValue, 0);
+        const proposalsOut = cards.filter((card) => card.sentProposalVersion !== null);
 
         return ok<PipelineBoard>({
           kpis: {
             openMonthlyValue: sum(cards),
             openDeals: cards.length,
             overdueNextSteps: cards.filter((card) => card.nextStep?.overdue).length,
+            proposalsOut: { deals: proposalsOut.length, monthlyValue: sum(proposalsOut) },
           },
           stages: OPEN_STAGES.map((stage) => {
             const inStage = cards.filter((card) => card.stage === stage);
@@ -208,7 +238,7 @@ function checkFields(input: DealInput) {
   const title = clean(input.title);
   if (!title) return fail("title_required");
   const value = input.estimatedMonthlyValue;
-  if (!Number.isInteger(value) || value < 0) return fail("value_invalid");
+  if (!isWholeDollars(value)) return fail("value_invalid");
   if (!isId(input.companyId)) return fail("company_not_found");
   if (!isId(input.ownerId)) return fail("owner_not_found");
   const due = checkDue(input.nextStepDue);
@@ -241,15 +271,19 @@ type DealRow = {
   next_step_due: string | null;
   company: { id: string; name: string };
   owner: { id: string; first_name: string; last_name: string; initials: string };
+  proposals: { version: number; status: ProposalStatus; line_items: { monthly_fee: number }[] }[];
 };
 
 function toCard(row: DealRow, today: Day): DealCard {
+  // The database allows at most one Sent Proposal per Deal.
+  const sent = row.proposals.find((proposal) => proposal.status === "Sent");
   return {
     id: row.id,
     title: row.title,
     kind: row.kind,
     stage: row.stage,
-    monthlyValue: row.estimated_monthly_value,
+    monthlyValue: sent ? monthlyTotal(sent.line_items) : row.estimated_monthly_value,
+    sentProposalVersion: sent?.version ?? null,
     company: row.company,
     owner: toOwnerRef(row.owner),
     nextStep: row.next_step

@@ -116,8 +116,8 @@ describe("Sandbox isolation", () => {
     expect(await theirCompanyNames()).not.toContain("Planted Co.");
   });
 
-  describe("for Contacts, Activities and Deals", () => {
-    const tables = ["contacts", "activities", "deals"] as const;
+  describe("for Contacts, Activities, Deals and Proposals", () => {
+    const tables = ["contacts", "activities", "deals", "proposals", "proposal_line_items"] as const;
 
     async function theirRows(table: (typeof tables)[number]) {
       const { data, error } = await theirs.db.schema("crm").from(table).select("*").order("id");
@@ -125,30 +125,37 @@ describe("Sandbox isolation", () => {
       return data;
     }
 
-    it("can't read another Sandbox's Contacts, Activities or Deals", async () => {
+    it("can't read another Sandbox's Contacts, Activities, Deals or Proposals", async () => {
       for (const table of tables) {
         const { data } = await mine.db.schema("crm").from(table).select("id").eq("sandbox_id", theirs.sandbox.id);
         expect(data, table).toEqual([]);
       }
     });
 
-    it("can't change another Sandbox's Contacts, Activities or Deals", async () => {
+    it("can't change another Sandbox's Contacts, Activities, Deals or Proposals", async () => {
       const before = {
         contacts: await theirRows("contacts"),
         activities: await theirRows("activities"),
         deals: await theirRows("deals"),
+        proposals: await theirRows("proposals"),
+        lineItems: await theirRows("proposal_line_items"),
       };
+      for (const rows of Object.values(before)) expect(rows.length).toBeGreaterThan(0);
 
       await mine.db.schema("crm").from("contacts").update({ name: "Hacked" }).eq("sandbox_id", theirs.sandbox.id);
       await mine.db.schema("crm").from("activities").update({ text: "Hacked" }).eq("sandbox_id", theirs.sandbox.id);
       await mine.db.schema("crm").from("deals").update({ title: "Hacked" }).eq("sandbox_id", theirs.sandbox.id);
+      await mine.db.schema("crm").from("proposals").update({ scope_summary: "Hacked" }).eq("sandbox_id", theirs.sandbox.id);
+      await mine.db.schema("crm").from("proposal_line_items").update({ service: "Hacked" }).eq("sandbox_id", theirs.sandbox.id);
 
       expect(await theirRows("contacts")).toEqual(before.contacts);
       expect(await theirRows("activities")).toEqual(before.activities);
       expect(await theirRows("deals")).toEqual(before.deals);
+      expect(await theirRows("proposals")).toEqual(before.proposals);
+      expect(await theirRows("proposal_line_items")).toEqual(before.lineItems);
     });
 
-    it("can't delete another Sandbox's Contacts, Activities or Deals", async () => {
+    it("can't delete another Sandbox's Contacts, Activities, Deals or Proposals", async () => {
       for (const table of tables) {
         const before = await theirRows(table);
 
@@ -178,6 +185,51 @@ describe("Sandbox isolation", () => {
       });
 
       expect(logged).toEqual({ ok: false, error: "deal_not_found" });
+    });
+
+    it("can't draft, edit, send or decline a Proposal on another Sandbox's Deal", async () => {
+      const [theirCompany] = await listCompanies(theirs);
+      const theirDeal = expectOk(
+        await theirs.crm.deals.create({
+          companyId: theirCompany.id,
+          ownerId: await personaId(theirs),
+          title: "Only In Their Sandbox",
+          estimatedMonthlyValue: 1000,
+        }),
+      );
+      const offer = { scopeSummary: "Reach across", termMonths: 6, lineItems: [{ service: "Search", monthlyFee: 100 }] };
+      const theirDraft = expectOk(await theirs.crm.proposals.createDraft(theirDeal.id, offer));
+
+      expect(await mine.crm.proposals.createDraft(theirDeal.id, offer)).toEqual({ ok: false, error: "not_found" });
+      expect(await mine.crm.proposals.editDraft(theirDraft.id, offer)).toEqual({ ok: false, error: "not_found" });
+      expect(await mine.crm.proposals.markSent(theirDraft.id)).toEqual({ ok: false, error: "not_found" });
+      expect(await mine.crm.proposals.markDeclined(theirDraft.id)).toEqual({ ok: false, error: "not_found" });
+    });
+
+    it("can't add a Proposal or line item to another Sandbox", async () => {
+      const [theirProposal] = await theirs.db.schema("crm").from("proposals").select("id, deal_id").then(({ data }) => data!);
+      const before = { proposals: await theirRows("proposals"), lineItems: await theirRows("proposal_line_items") };
+      const crm = mine.db.schema("crm");
+
+      const proposal = await crm.from("proposals").insert({
+        sandbox_id: theirs.sandbox.id,
+        deal_id: theirProposal.deal_id,
+        version: 99,
+        scope_summary: "Planted",
+        term_months: 1,
+      });
+      const lineItem = await crm.from("proposal_line_items").insert({
+        sandbox_id: theirs.sandbox.id,
+        proposal_id: theirProposal.id,
+        position: 99,
+        service: "Planted",
+        monthly_fee: 1,
+      });
+
+      expect(proposal.error?.code).toBe("42501"); // row-level security
+      expect(lineItem.error?.code).toBe("42501");
+      expect(await theirRows("proposals")).toEqual(before.proposals);
+      expect(await theirRows("proposal_line_items")).toEqual(before.lineItems);
     });
 
     it("can't add a Deal to another Sandbox", async () => {

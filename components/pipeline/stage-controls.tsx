@@ -14,14 +14,16 @@ import {
 import { OPEN_STAGES, type DealStage } from "@/lib/crm/terms";
 import { StageDot } from "./stage";
 
-// Won and Lost have rules of their own, which arrive with Proposals and Lost reasons.
-const WON_LOST_RULES: Partial<Record<DealStage, string>> = {
-  Won: "needs a Sent Proposal",
-  Lost: "needs a Lost reason",
-};
+/** Why Won and Lost can't be picked yet. Tickets 07 and 09 make them available. */
+function wonLostRules(hasSentProposal: boolean): [DealStage, string][] {
+  return [
+    ["Won", hasSentProposal ? "coming soon" : "needs a Sent Proposal"],
+    ["Lost", "needs a Lost reason"],
+  ];
+}
 
 /** The Deal Sheet's Stage dropdown. Picking a Stage moves the Deal at once. */
-export function StageSelect({ dealId, stage }: { dealId: string; stage: DealStage }) {
+export function StageSelect({ dealId, stage, hasSentProposal }: { dealId: string; stage: DealStage; hasSentProposal: boolean }) {
   const [state, action, pending] = useActionState(moveDeal, IDLE);
   const form = useRef<HTMLFormElement>(null);
   return (
@@ -46,7 +48,7 @@ export function StageSelect({ dealId, stage }: { dealId: string; stage: DealStag
               {open}
             </option>
           ))}
-          {Object.entries(WON_LOST_RULES).map(([wonOrLost, rule]) => (
+          {wonLostRules(hasSentProposal).map(([wonOrLost, rule]) => (
             <option key={wonOrLost} value={wonOrLost} disabled>
               {wonOrLost} ({rule})
             </option>

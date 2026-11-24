@@ -133,6 +133,58 @@ isOneToOne: false
       referencedColumns: ["sandbox_id","id"]
     }
                   ]
+                },"proposal_line_items": {
+                  Row: {
+                    "id": string,"monthly_fee": number,"position": number,"proposal_id": string,"sandbox_id": string,"service": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "id"?: string,"monthly_fee": number,"position": number,"proposal_id": string,"sandbox_id"?: string,"service": string
+                  }
+                  Update: {
+                    "id"?: string,"monthly_fee"?: number,"position"?: number,"proposal_id"?: string,"sandbox_id"?: string,"service"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "proposal_line_items_sandbox_id_fkey"
+      columns: ["sandbox_id"]
+isOneToOne: false
+      referencedRelation: "sandboxes"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "proposal_line_items_sandbox_id_proposal_id_fkey"
+      columns: ["sandbox_id","proposal_id"]
+isOneToOne: false
+      referencedRelation: "proposals"
+      referencedColumns: ["sandbox_id","id"]
+    }
+                  ]
+                },"proposals": {
+                  Row: {
+                    "created_at": string,"deal_id": string,"id": string,"sandbox_id": string,"scope_summary": string,"sent_at": string | null,"status": Database["crm"]['Enums']["proposal_status"],"term_months": number,"version": number
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"deal_id": string,"id"?: string,"sandbox_id"?: string,"scope_summary": string,"sent_at"?: string | null,"status"?: Database["crm"]['Enums']["proposal_status"],"term_months": number,"version": number
+                  }
+                  Update: {
+                    "created_at"?: string,"deal_id"?: string,"id"?: string,"sandbox_id"?: string,"scope_summary"?: string,"sent_at"?: string | null,"status"?: Database["crm"]['Enums']["proposal_status"],"term_months"?: number,"version"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "proposals_sandbox_id_deal_id_fkey"
+      columns: ["sandbox_id","deal_id"]
+isOneToOne: false
+      referencedRelation: "deals"
+      referencedColumns: ["sandbox_id","id"]
+    },{
+      foreignKeyName: "proposals_sandbox_id_fkey"
+      columns: ["sandbox_id"]
+isOneToOne: false
+      referencedRelation: "sandboxes"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"sandbox_openings": {
                   Row: {
                     "id": number,"ip_hash": string,"opened_at": string
@@ -193,6 +245,12 @@ isOneToOne: false
 "current_sandbox_id":
 { Args: Record<PropertyKey, never>; Returns: string
                            },
+"draft_proposal":
+{ Args: { "deal": string,"items": Json,"scope": string,"term": number }; Returns: string
+                           },
+"edit_proposal_draft":
+{ Args: { "items": Json,"proposal": string,"scope": string,"term": number }; Returns: undefined
+                           },
 "fill_sandbox":
 { Args: { "target": string,"today": string }; Returns: undefined
                            },
@@ -220,7 +278,7 @@ isOneToOne: false
                            }
           }
           Enums: {
-            "activity_kind": "Email"|"Call"|"Meeting"|"Note","deal_kind": "New business"|"Renewal","deal_stage": "New"|"Qualified"|"Discovery"|"Proposal sent"|"Negotiation"|"Won"|"Lost"
+            "activity_kind": "Email"|"Call"|"Meeting"|"Note","deal_kind": "New business"|"Renewal","deal_stage": "New"|"Qualified"|"Discovery"|"Proposal sent"|"Negotiation"|"Won"|"Lost","proposal_status": "Draft"|"Sent"|"Accepted"|"Declined"
           }
           CompositeTypes: {
             [_ in never]: never
@@ -336,7 +394,7 @@ export type CompositeTypes<
 export const Constants = {
   "crm": {
           Enums: {
-            "activity_kind": ["Email", "Call", "Meeting", "Note"],"deal_kind": ["New business", "Renewal"],"deal_stage": ["New", "Qualified", "Discovery", "Proposal sent", "Negotiation", "Won", "Lost"]
+            "activity_kind": ["Email", "Call", "Meeting", "Note"],"deal_kind": ["New business", "Renewal"],"deal_stage": ["New", "Qualified", "Discovery", "Proposal sent", "Negotiation", "Won", "Lost"],"proposal_status": ["Draft", "Sent", "Accepted", "Declined"]
           }
         }
 } as const
