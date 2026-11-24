@@ -56,6 +56,8 @@ const MESSAGES: Record<string, { message: string; field?: string }> = {
   ai_daily_cap_reached: {
     message: "The whole demo has reached its AI limit for today, so it's nothing you did. Everything else keeps working, and the AI is back tomorrow.",
   },
+  deal_closed: { message: "This Deal is closed, so it has no Next step to write about. Reload the page." },
+  draft_empty: { message: "Write the email first.", field: "text" },
   ai_unavailable: { message: "The AI didn't answer. That used one AI action. Try again in a moment." },
   nothing_to_summarize: { message: "There's nothing to summarize yet. Log an Activity or add a Deal first." },
   lost_reason_required: { message: "Pick a Lost reason.", field: "lostReason" },

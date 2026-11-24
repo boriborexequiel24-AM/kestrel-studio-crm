@@ -254,6 +254,20 @@ describe("Sandbox isolation", () => {
       expect(expectOk(await theirs.crm.companies.get(company, { today })).summary?.lines).toEqual(written.lines);
     });
 
+    it("can't draft about or log on a Deal only another Sandbox has", async () => {
+      const theirDeal = await dealWithSentProposal(theirs.crm);
+
+      const drafted = await mine.crm.ai.draftFollowUp(theirDeal.id, { today: utcDay() });
+      const logged = await mine.crm.ai.logAsSent(theirDeal.id, { text: "Not mine to send.", contactId: null });
+
+      expect([drafted, logged]).toEqual([
+        { ok: false, error: "not_found" },
+        { ok: false, error: "not_found" },
+      ]);
+      expect(mine.ai.requests).toHaveLength(0);
+      expect(expectOk(await theirs.crm.deals.get(theirDeal.id, { today: utcDay() })).activities).toEqual([]);
+    });
+
     it("can't finish another Sandbox's AI action while it runs", async () => {
       const begin = await theirs.db.schema("crm").rpc("begin_ai_action", { feature: "ask", sandbox_limit: 30, daily_cap: 10_000 });
 

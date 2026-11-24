@@ -55,7 +55,7 @@ export type { ContactInput } from "./contacts";
 export type { LineItem, Proposal, ProposalInput } from "./proposals";
 export type { Retainer } from "./retainers";
 export type { HomeOverview } from "./home";
-export type { AiActionsLeft, AiLimits, AiRefusal } from "./ai";
+export type { AiActionsLeft, AiLimits, AiRefusal, FollowUpDraft } from "./ai";
 export type { Summary } from "./summaries";
 export type { ActivityFields, ActivityInput } from "./activities";
 
@@ -69,18 +69,21 @@ export function createCrm(supabase: CrmSupabaseClient, deps: CrmDeps) {
   const pipeline = pipelineArea(context);
   const retainers = retainersArea(context);
   const companies = companiesArea(context);
+  const deals = dealsArea(context);
+  const activities = activitiesArea(context);
+  const team = teamArea(context);
   return {
     sandbox,
-    team: teamArea(context),
+    team,
     companies,
     contacts: contactsArea(context),
-    activities: activitiesArea(context),
-    deals: dealsArea(context),
+    activities,
+    deals,
     pipeline,
     proposals: proposalsArea(context),
     retainers,
     home: homeArea({ pipeline, retainers }),
-    ai: aiArea(context, { provider: deps.ai, limits: deps.limits, companies }),
+    ai: aiArea(context, { provider: deps.ai, limits: deps.limits, companies, deals, activities, team }),
   };
 }
 

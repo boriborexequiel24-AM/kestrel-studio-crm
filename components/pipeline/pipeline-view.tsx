@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 import { CalendarClock, Check, CircleX, MessageSquareText, Repeat, Users } from "lucide-react";
+import { FollowUp } from "@/components/ai/follow-up";
 import { SummaryCard } from "@/components/ai/summary-card";
 import { LinkSwitch } from "@/components/app/link-switch";
 import { PageHeader } from "@/components/app/page-header";
@@ -11,7 +12,7 @@ import { LogActivityButton } from "@/components/companies/activity-forms";
 import { ownerOptions } from "@/components/companies/owner-options";
 import { RetainerStateChip } from "@/components/retainers/retainer-state";
 import { SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { OPEN_STAGES, isOpenStage, type Crm, type DealDetail, type DealStage, type LostReason, type PipelineBoard, type Retainer } from "@/lib/crm";
+import { OPEN_STAGES, isOpenStage, type AiActionsLeft, type Crm, type DealDetail, type DealStage, type LostReason, type PipelineBoard, type Retainer } from "@/lib/crm";
 import { requireLiveSandbox, valueOrLanding, landingFor } from "@/lib/crm/server";
 import { dueLabel, fullName, longDay, usd } from "@/lib/format";
 import { visitorToday } from "@/lib/visitor-day";
@@ -275,7 +276,7 @@ async function DealSheet({ id, searchParams }: { id: string; searchParams: Searc
         <StageStepper stage={deal.stage} />
         {deal.lostReason && <LostBanner reason={deal.lostReason} on={deal.closedOn} />}
         {deal.retainer && <RetainerCard deal={deal} retainer={deal.retainer} />}
-        {(deal.nextStep || isOpenStage(deal.stage)) && <NextStepCard deal={deal} today={today} />}
+        {(deal.nextStep || isOpenStage(deal.stage)) && <NextStepCard deal={deal} today={today} actions={valueOrLanding(actions)} />}
         <SummaryCard
           id={`deal-${deal.id}`}
           companyId={deal.company.id}
@@ -368,7 +369,7 @@ function RetainerCard({ deal, retainer }: { deal: DealDetail; retainer: Retainer
   );
 }
 
-function NextStepCard({ deal, today }: { deal: DealDetail; today: string }) {
+function NextStepCard({ deal, today, actions }: { deal: DealDetail; today: string; actions: AiActionsLeft }) {
   const next = deal.nextStep;
   return (
     <section aria-labelledby="next-step-heading" className="rounded-xl border border-border bg-card p-4">
@@ -390,6 +391,8 @@ function NextStepCard({ deal, today }: { deal: DealDetail; today: string }) {
       ) : (
         <p className="mt-1 text-[14px] text-muted-foreground">No Next step yet. Every Deal should have one clear action.</p>
       )}
+      {/* A draft is about this Deal at this Company, so it goes if either changes. */}
+      {isOpenStage(deal.stage) && <FollowUp key={`${deal.id} ${deal.company.id}`} dealId={deal.id} actions={actions} />}
     </section>
   );
 }
@@ -448,7 +451,7 @@ function DealActivities({ deal }: { deal: DealDetail }) {
                     <b className="text-foreground">{activity.kind}</b> by {fullName(activity.author)}
                     {activity.contact && <> with {activity.contact.name}</>}, <RelativeTime iso={activity.occurredAt.toISOString()} />
                   </p>
-                  <p className="leading-relaxed">{activity.text}</p>
+                  <p className="leading-relaxed whitespace-pre-line">{activity.text}</p>
                 </div>
               </li>
             );

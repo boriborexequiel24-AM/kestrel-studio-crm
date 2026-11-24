@@ -233,6 +233,14 @@ workflow demo.
 - **OpenAI is asked not to store anything (`store: false`)** (decided 2026-11-24). Prices for the cost
   log are in `lib/ai/openai.ts`; a model not listed there logs no cost.
 - **The Summary card is on the Deal Sheet too** (decided 2026-11-24). The spec's look section has it.
+- **A follow-up goes to the Contact in the Deal's latest Activity that names one, or else the
+  Company's first Contact** (decided 2026-11-24). Contacts have no "main" flag. It's always from Maya.
+- **Follow-ups are for open Deals only** (decided 2026-11-24). A closed Deal has no Next step to move.
+- **A draft lives only in the page until it's logged** (decided 2026-11-24). Closing the Deal loses it.
+- **A draft uses the Deal's last 5 Activities and up to 200 characters of instruction** (decided
+  2026-11-24). Keeps its cost down; Log as sent costs no AI action.
+- **Logging a draft whose Contact has gone records it without the Contact** (decided 2026-11-24). The
+  email was still sent; a refusal would be a dead end.
 
 ## Open questions
 - A proper logo mark (the prototype's is a placeholder).
@@ -252,8 +260,8 @@ workflow demo.
 - `components/app/` : app frame (top bar, nav, logo, page header). `components/ui/` : shadcn.
 - `lib/crm/` : the CRM module, the one seam for data (`index.ts`), and `server.ts` to get it in
   a request (`getCrm`, `requireLiveSandbox`).
-- `lib/ai/` : AI provider interface, OpenAI and fake adapters, `AI_PROVIDER` switch. Prompts and limits
-  are in `lib/crm/ai.ts`.
+- `lib/ai/` : AI provider interface, OpenAI and fake adapters, `AI_PROVIDER` switch. Limits are in
+  `lib/crm/ai.ts`, prompts in `lib/crm/prompts.ts`.
 - `lib/supabase/` : the visitor's cookie-based Supabase client.
 - `lib/database.types.ts` : generated from the local database (`npm run db:types`).
 - `proxy.ts` : refreshes the Supabase session on each request.

@@ -30,14 +30,13 @@ export function SummarizeButton({ companyId, headingId, again, disabled }: Summa
 
   const Icon = again ? RefreshCw : Sparkles;
   return (
-    <form ref={form} action={action} onSubmit={(event) => pending && event.preventDefault()} className="grid grid-cols-1 gap-2">
+    <form ref={form} action={action} onSubmit={(event) => (pending || disabled) && event.preventDefault()} className="grid grid-cols-1 gap-2">
       <input type="hidden" name="companyId" value={companyId} />
       <div>
-        {/* Not `disabled` while it runs: that would drop keyboard focus. */}
+        {/* Not `disabled`: that would drop keyboard focus. */}
         <Button
           type="submit"
-          disabled={disabled}
-          aria-disabled={pending || undefined}
+          aria-disabled={pending || disabled || undefined}
           className="h-11 rounded-lg px-4 font-semibold hover:bg-primary-hover aria-disabled:opacity-50"
         >
           <Icon aria-hidden /> {pending ? "Summarizing..." : again ? "Refresh summary" : "Summarize"}

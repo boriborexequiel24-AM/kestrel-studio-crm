@@ -56,7 +56,7 @@ export function SummaryCard({ id, companyId, companyName, summary, actions, head
         <ActionsLeft actions={actions} />
       </div>
       {spent && !summary?.upToDate && (
-        <p className="mt-2 text-[13px]">You have used all {actions.limit} AI actions for today. Everything else keeps working.</p>
+        <p role="status" className="mt-2 text-[13px]">You have used all {actions.limit} AI actions for today. Everything else keeps working.</p>
       )}
     </section>
   );
