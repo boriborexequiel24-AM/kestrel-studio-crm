@@ -252,6 +252,10 @@ workflow demo.
 - **A Deal's Sheet has its own "Ask the pipeline" button** (decided 2026-11-24). It covers the top bar.
 - **Start over locks the Sandbox but gives way to a save in progress, and retries** (decided
   2026-11-24). A plain lock deadlocked with saves that had already locked a Deal.
+- **The live database is set up by pasting one generated SQL file into the SQL Editor** (decided
+  2026-11-24). There's no CLI access to the shared project; it's one transaction, undone if anything
+  outside `crm` would change.
+- **The service key isn't set on Vercel** (decided 2026-11-24). No request code uses it.
 
 ## Open questions
 - A proper logo mark (the prototype's is a placeholder).
@@ -286,6 +290,9 @@ workflow demo.
 - `npm run dev` : app on http://localhost:3000 (needs `.env`, see `.env.example`).
 - `npm test` : all tests (needs the local stack running). `npx vitest run tests/<file>` for one.
 - `npm run typecheck`, `npm run lint`, `npm run build`.
+- `npm run live:sql` : writes `supabase/live/setup.sql` for a first go-live. `preflight.sql`, `verify.sql`
+  and `cost.sql` next to it only read. `npm run live:check` : checks the live project with the public
+  key in `.env.live` (opens two Sandboxes there).
 - Local `supabase/config.toml` keeps analytics off: on Windows it needs Docker's daemon on
   unencrypted TCP.
 

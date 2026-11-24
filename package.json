@@ -13,7 +13,9 @@
     "db:start": "supabase start",
     "db:stop": "supabase stop",
     "db:reset": "supabase db reset",
-    "db:types": "supabase gen types typescript --schema crm > lib/database.types.ts"
+    "db:types": "supabase gen types typescript --schema crm > lib/database.types.ts",
+    "live:sql": "node scripts/build-live-sql.mjs",
+    "live:check": "node scripts/check-live.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
