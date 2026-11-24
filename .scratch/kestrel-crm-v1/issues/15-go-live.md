@@ -4,14 +4,14 @@
 
 **Blocked by:** 02 to 14 (all feature tickets).
 
-**Status:** ready-for-human
+**Status:** done
 
 - [x] In the shared Supabase project: anonymous sign-ins are turned on, `crm` is added to the schemas exposed to the API, and pg_cron is enabled. The `public`, `leads` and `ops` schemas are untouched.
 - [x] The repo's migrations and Template seed are applied to the shared project, and the hourly cleanup job is scheduled there.
 - [x] A Vercel project is created and its environment variables are set from `.env.example`'s names, with `AI_PROVIDER` set to OpenAI.
 - [x] On the live address, a fresh browser can open the demo and run the tour: Home, Pipeline, open a Deal, send a Proposal, win it, see the Retainer, Summarize, Draft follow-up, Ask the pipeline, Start over.
 - [x] Two browsers on the live address can't see each other's changes.
-- [ ] After a few real AI actions, the usage table shows cost per action, and `DEMO_DAILY_AI_ACTION_CAP` is set from it.
+- [x] After a few real AI actions, the usage table shows cost per action, and `DEMO_DAILY_AI_ACTION_CAP` is set from it.
 - [x] `CLAUDE.md` records the live address and the deploy steps.
 
 ## Comments
@@ -29,3 +29,12 @@ Found in the real AI's answers, fixed with tests but **not live until the next p
 Still open: read `cost.sql`, set `DEMO_DAILY_AI_ACTION_CAP` from it, check the fixed answers live, then make the repo public.
 
 **2026-11-24, after the push.** The December answer is right and names show once. The change made "Why are we losing Deals?" look at last month only (3 of 7 Deals), and half of a two-part question went unanswered. Now a lookup without days has no limit, and the prompt asks for every part. Tested with the fake AI; **not live or checked with the real one yet.**
+
+**2026-11-24, done.** Both fixes are live. Re-asked with the real AI and checked against the records: "Why are we losing Deals?" (9 Deals, $51,200, reasons right), "What renews next month?" (3 Retainers), "stuck in Proposal sent" (5, longest first) and a two-part question with a Company that doesn't exist. Measured cost is in `CLAUDE.md`'s decisions; Zeki chose a cap of 300 and set it in Vercel (not readable from here).
+
+Left for later:
+- The AI counts a Proposal's sent date in UTC days, so it can say "5 days ago" where the Deal says "sent 4 days ago".
+- About 155 sample Activities, not ~300.
+- Before the repo goes public: tidy the internal notes, add a README.
+- A real phone, Safari and the Copy button are unchecked. `components/app/coming-soon.tsx` is unused.
+- OpenRouter as a second provider, if OpenAI's credit runs low.
