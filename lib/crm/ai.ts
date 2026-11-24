@@ -241,23 +241,57 @@ function toAnswerParts(text: string, lookups: ReturnType<typeof createLookups>):
   const say = (words: string) => {
     if (words) parts.push({ type: "text", text: words });
   };
+  // The link shows the record's name, so the name written out next to it goes.
+  const show = (link: RecordLink) => {
+    const [before, gap] = parts.slice(-2);
+    if (before?.type === link.type && before.id === link.id && gap?.type === "text" && !gap.text.trim()) {
+      parts.pop();
+      return;
+    }
+    const last = parts.at(-1);
+    if (last?.type === "text") last.text = withoutNameAtEnd(last.text, link.name);
+    if (last?.type === "text" && !last.text) parts.pop();
+    parts.push(link);
+  };
+  const sayAfter = (words: string) => {
+    const last = parts.at(-1);
+    say(last && last.type !== "text" ? withoutNameAtStart(words, last.name) : words);
+  };
 
   let end = 0;
   for (const match of text.matchAll(SHORT_NAMES)) {
     const [written, doubled, single, bare] = match;
-    say(text.slice(end, match.index));
+    sayAfter(text.slice(end, match.index));
     end = match.index + written.length;
     const names = doubled === undefined ? [single ?? bare] : doubled.split(/[:|]/)[0].split(",");
     names.forEach((name, index) => {
       if (index) say(", ");
       const link = lookups.link(name.trim().toUpperCase());
       // Bare text may only look like a short name, so it stays if it isn't one.
-      if (link) parts.push(link);
-      else say(bare ?? "(a record I can't find)");
+      if (link) show(link);
+      // Something in brackets that never was a short name, such as a Company that isn't there, stays as written.
+      else say(bare ?? (doubled !== undefined && !/^\s*[DC]\d+\s*$/i.test(name) ? name.trim() : "(a record I can't find)"));
     });
   }
-  say(text.slice(end));
+  sayAfter(text.slice(end));
   return { parts, lookedUp: lookups.labels() };
+}
+
+/** " Harbor & Pine has" or " (Harbor & Pine) has" after a link to Harbor & Pine is " has". */
+function withoutNameAtStart(text: string, name: string): string {
+  const [, opened, rest] = /^\s+(\(?)([\s\S]*)$/.exec(text) ?? [];
+  if (!rest?.startsWith(name)) return text;
+  const after = rest.slice(name.length);
+  if (opened) return after.startsWith(")") ? after.slice(1) : text;
+  return /^\w/.test(after) ? text : after;
+}
+
+/** "So Harbor & Pine " before a link to Harbor & Pine is "So ". */
+function withoutNameAtEnd(text: string, name: string): string {
+  const trimmed = text.trimEnd();
+  if (trimmed === text || !trimmed.endsWith(name)) return text;
+  const before = trimmed.slice(0, -name.length);
+  return /\w$/.test(before) ? text : before;
 }
 
 /** Who a follow-up goes to: whoever the Deal's latest Activity names, or else the Company's first Contact. */

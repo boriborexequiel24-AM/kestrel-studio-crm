@@ -263,10 +263,30 @@ workflow demo.
 - **Live anonymous sign-ins: 300 an hour, CAPTCHA off** (decided 2026-11-24). They all come from
   Vercel's servers, which can't answer a CAPTCHA; each network is limited by this app.
 - **The live daily AI cap starts at 100** (decided 2026-11-24). Until real cost per action is measured.
+- **Vercel functions run in Seoul (`icn1`), next to the database** (decided 2026-11-24). In
+  Washington, the default, a page took 1.2 to 2 seconds; here 0.3 to 0.75.
+- **Vercel Authentication leaves the production address open** (decided 2026-11-24). Otherwise every
+  visitor is asked to sign in to Vercel.
+- **Ask the pipeline's lookups take exact days, and the prompt gives this, next and last month's** (decided
+  2026-11-24). With a number of days, "next month" became 31 days and missed a Retainer.
+- **A linked record's name is shown once** (decided 2026-11-24). The real model also writes it beside
+  the link.
 
 ## Open questions
 - A proper logo mark (the prototype's is a placeholder).
 - Project name (folder is still `Big Test`).
+
+## Live
+- **Address:** https://kestrel-studio-crm.vercel.app (Vercel project `kestrel-studio-crm`, team
+  "Work with Zeki"; private GitHub repo `boriborexequiel24-AM/kestrel-studio-crm`).
+- **Database:** `crm` in the shared Supabase project (Seoul, `ap-northeast-2`).
+- **Deploying the app:** a push to `main` deploys it. Environment variables and the function region are
+  in Vercel and only apply after a redeploy.
+  `OPENAI_API_KEY` is a Secret there; a local `.env` never reaches it.
+- **Changing the database:** run the new migration file in the Supabase SQL Editor, in name order and
+  before the code that needs it is pushed. Run `supabase/live/verify.sql` and `npm run live:check` after.
+  `setup.sql` was for the first time only.
+- **Costs and limits:** `supabase/live/cost.sql` shows the real cost per AI action.
 
 ## Tech stack
 - **App:** Next.js 16.4 (App Router, Turbopack, Cache Components), React 19, Tailwind v4,
@@ -324,4 +344,4 @@ Single-context: one `GLOSSARY.md` and `docs/adr/` at the repo root. See `docs/ag
 
 ## Notes
 - Platform: Windows 11 (PowerShell / Git Bash).
-- Git repo initialized 2026-11-22 (branch `main`, no remote yet).
+- Git repo initialized 2026-11-22 (branch `main`). Remote `origin` is private until the repo goes public.

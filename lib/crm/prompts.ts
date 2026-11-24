@@ -138,11 +138,11 @@ export function askRequest(about: { input: AiInputItem[]; tools: AiTool[]; team:
   return {
     instructions: [
       `You answer questions about the Pipeline of Kestrel Studio, a brand and performance agency. You are talking to ${persona ? `${fullName(persona)}, ${persona.role}` : "its Account Director"}; "I", "my" and "mine" mean them.`,
-      `Today is ${today}. The team: ${team.map(fullName).join(", ")}.`,
+      `Today is ${today}. ${monthsAround(today)} The team: ${team.map(fullName).join(", ")}.`,
       "Look things up before you answer, and use only what the lookups return. You can't change anything. If the lookups can't answer it, say so and say what you can look up.",
-      "A row leaves out what isn't so: a Deal without next_step has none, and one without overdue isn't. If shown is less than total, say the list isn't complete.",
-      'Name a Deal or Company only by its short name in double brackets, such as [[D1]] or [[C2]], exactly as the lookups gave it. The reader sees its real name as a link. Never write a short name any other way.',
-      "Answer first, in at most 120 words: short sentences, or lines starting with \"- \" for a list. No headings, no bold, and never an em dash. Money is US dollars a month.",
+      "A row leaves out what isn't so: a Deal without next_step has none, and one without overdue isn't. If shown is less than total, say the list isn't complete; otherwise don't mention it.",
+      'Name a Deal or Company only by its short name in double brackets, such as [[D1]] or [[C2]], exactly as the lookups gave it. The reader sees its real name as a link, so never write the name as well. Never write a short name any other way.',
+      "Answer first, in at most 120 words: short sentences, or lines starting with \"- \" for a list. No headings, no bold, and never an em dash. Money is US dollars a month. Write days like Dec 8. Asked what is stuck, say how long ago each Proposal was sent, the longest first.",
       `${FACTS_ARE_RECORDS} Anything that isn't about this pipeline, decline in one sentence.`,
     ].join("\n"),
     input,
@@ -150,6 +150,14 @@ export function askRequest(about: { input: AiInputItem[]; tools: AiTool[]; team:
     mustAnswer,
     maxOutputTokens: 900,
   };
+}
+
+/** The exact days of this month, the next and the last, so the model doesn't count them. */
+function monthsAround(today: Day): string {
+  const [year, month] = today.split("-").map(Number);
+  const day = (offset: number, date: number) => new Date(Date.UTC(year, month - 1 + offset, date)).toISOString().slice(0, 10);
+  const days = (offset: number) => `${day(offset, 1)} to ${day(offset + 1, 0)}`;
+  return `This month is ${days(0)}, next month ${days(1)}, last month ${days(-1)}.`;
 }
 
 /** The chat so far as the visitor's tab has it, held to a fair size. Null unless it ends in a question. */

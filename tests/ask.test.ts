@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { AiToolCall } from "@/lib/ai/provider";
 import type { Answer, ChatMessage } from "@/lib/crm";
+import { longDay } from "@/lib/format";
 import { utcDay } from "./support/days";
 import { dealWithSentProposal, newDeal } from "./support/deals";
 import { expectOk } from "./support/results";
@@ -69,6 +70,34 @@ describe("Ask the pipeline", () => {
     expect(plainText(answer)).toBe(`See ${names.map((name) => records[name].name).join(text)}.`);
   });
 
+  it.each(["[[C1]] NAME has", "NAME [[C1]] has", "[[C1]] (NAME) has", "[[C1]] [[C1]] has", "[[C1]] has"])(
+    "says a linked record's name once: %s",
+    async (written) => {
+      const visitor = await visitorWithSandbox();
+      const [{ company }] = expectOk(await visitor.crm.pipeline.board({ ...TODAY, owners: "everyone" })).deals;
+
+      const { answer } = await lookUp(visitor, [call("find_deals", everyDeal)], `So ${written.replace("NAME", company.name)} news.`);
+
+      expect(links(answer)).toEqual([{ type: "company", id: company.id, name: company.name }]);
+      expect(plainText(answer)).toBe(`So ${company.name} has news.`);
+    },
+  );
+
+  it("keeps the words of a bracketed name no lookup found", async () => {
+    const { answer } = await lookUp(await visitorWithSandbox(), [call("pipeline_totals")], "I can't find [[Bluefin Motors]], or [[C9]].");
+
+    expect(plainText(answer)).toBe("I can't find Bluefin Motors, or (a record I can't find).");
+  });
+
+  it("tells the model which days this month and the next are", async () => {
+    const { crm, ai } = await visitorWithSandbox();
+    ai.script({ text: "Done." });
+
+    expectOk(await crm.ai.ask({ today: "2026-11-24", messages: question("What renews next month?") }));
+
+    expect(ai.requests[0].instructions).toContain("This month is 2026-11-01 to 2026-11-30, next month 2026-12-01 to 2026-12-31, last month 2026-10-01 to 2026-10-31.");
+  });
+
   it("gives a record one short name, whichever lookup finds it", async () => {
     const visitor = await visitorWithSandbox();
 
@@ -91,7 +120,7 @@ describe("Ask the pipeline", () => {
     const usage = (inputTokens: number, outputTokens: number, costUsd: number) => ({ inputTokens, outputTokens, costUsd });
     ai.script(
       { toolCalls: [call("pipeline_totals"), call("find_deals", everyDeal)], usage: usage(100, 10, 0.001) },
-      { toolCalls: [call("lost_deals", { within_days: 90 })], usage: usage(200, 20, 0.002) },
+      { toolCalls: [call("lost_deals", { from: utcDay(-90), to: utcDay() })], usage: usage(200, 20, 0.002) },
       { text: "Three lookups later.", usage: usage(300, 30, 0.003) },
     );
 
@@ -182,9 +211,9 @@ describe("Ask the pipeline", () => {
 
     await lookUp(visitor, [
       call("find_deals", everyDeal, "1"),
-      call("retainers_ending", { within_days: 60 }, "2"),
+      call("retainers_ending", { from: utcDay(), to: utcDay(60) }, "2"),
       call("company_activities", { company: "Tidebrook" }, "3"),
-      call("lost_deals", { within_days: 365 }, "4"),
+      call("lost_deals", { from: utcDay(-365), to: utcDay() }, "4"),
       call("pipeline_totals", {}, "5"),
     ]);
 
@@ -211,10 +240,11 @@ describe("Ask the pipeline", () => {
   it.each([
     ["toString", {}],
     ["find_deals", { ...everyDeal, overdue: "yes" }],
-    ["lost_deals", { within_days: -1 }],
+    ["lost_deals", { from: "last month", to: utcDay() }],
     ["find_deals", null],
     ["find_deals", { stage: "Stuck", owner: 7 }],
-    ["retainers_ending", { within_days: "soon" }],
+    ["retainers_ending", { from: utcDay(), to: "2026-02-31" }],
+    ["retainers_ending", { from: utcDay(9), to: utcDay(8) }],
     ["company_activities", { company: 12 }],
     ["lost_deals", "everything"],
   ])("copes with bad arguments to %s: %j", async (name, args) => {
@@ -357,7 +387,7 @@ describe("the lookups", () => {
       }),
     );
 
-    const { results, answer } = await lookUp(visitor, [call("retainers_ending", { within_days: 60 })], "Renewing in [[D1]].");
+    const { results, answer } = await lookUp(visitor, [call("retainers_ending", { from: utcDay(), to: utcDay(60) })], "Renewing in [[D1]].");
 
     expect(links(answer)).toEqual([{ type: "deal", id: renewal.id, name: "Its own title" }]);
     const titles = (results[0] as { retainers: { title: string }[] }).retainers.map((each) => each.title);
@@ -365,19 +395,21 @@ describe("the lookups", () => {
     expect(titles).not.toContain(second.deal.title);
   });
 
-  it("find Retainers ending within some days", async () => {
+  it("find Retainers ending in a period, its first and last day included", async () => {
     const visitor = await visitorWithSandbox();
     const all = expectOk(await visitor.crm.retainers.list(TODAY));
 
-    const { results, answer } = await lookUp(visitor, [call("retainers_ending", { within_days: 30 })], "[[C1]] is first.");
+    const [from, to] = [all[1].endDate, all[3].endDate];
 
-    const expected = all.filter((retainer) => retainer.endDate <= utcDay(30));
-    expect(expected.length).toBeGreaterThan(0);
+    const { results, answer } = await lookUp(visitor, [call("retainers_ending", { from, to })], "[[C1]] is first.");
+
+    const expected = all.filter((retainer) => retainer.endDate >= from && retainer.endDate <= to);
+    expect(expected.length).toBeGreaterThanOrEqual(3);
     expect((results[0] as { retainers: unknown[] }).retainers).toMatchObject(
       expected.map((retainer) => ({ title: retainer.deal.title, ends: retainer.endDate, monthly_fee: retainer.monthlyFee })),
     );
     expect(links(answer)).toEqual([{ type: "company", id: expected[0].company.id, name: expected[0].company.name }]);
-    expect(answer.lookedUp).toEqual(["Retainers ending within 30 days"]);
+    expect(answer.lookedUp).toEqual([`Retainers ending ${longDay(from)} to ${longDay(to)}`]);
   });
 
   it("find a Company's recent Activities by its name", async () => {
@@ -410,9 +442,9 @@ describe("the lookups", () => {
   it("find Lost Deals with their reasons over a period", async () => {
     const visitor = await visitorWithSandbox();
     const closed = expectOk(await visitor.crm.pipeline.closed({ ...TODAY, owners: "everyone" }));
-    const lost = closed.filter((deal) => deal.stage === "Lost" && deal.closedOn! >= utcDay(-60));
+    const lost = closed.filter((deal) => deal.stage === "Lost" && deal.closedOn! >= utcDay(-60) && deal.closedOn! <= utcDay(-5));
 
-    const { results } = await lookUp(visitor, [call("lost_deals", { within_days: 60 })]);
+    const { results } = await lookUp(visitor, [call("lost_deals", { from: utcDay(-60), to: utcDay(-5) })]);
 
     const found = results[0] as { total: number; reasons: Record<string, number>; deals: { title: string; lost_reason: string }[] };
     expect(found.total).toBe(lost.length);
@@ -453,9 +485,9 @@ describe("the lookups", () => {
     const { told } = await lookUp(mine, [
       call("find_deals", { ...everyDeal, overdue: true }, "1"),
       call("find_deals", { ...everyDeal, stage: "Won" }, "2"),
-      call("retainers_ending", { within_days: 10 }, "3"),
+      call("retainers_ending", { from: utcDay(), to: utcDay(10) }, "3"),
       call("company_activities", { company: "Company" }, "4"),
-      call("lost_deals", { within_days: 5 }, "5"),
+      call("lost_deals", { from: utcDay(-5), to: utcDay() }, "5"),
     ]);
     const direct = await lookUp(mine, [call("company_activities", { company: "Theirs Company" }, "1"), call("pipeline_totals", {}, "2")]);
 

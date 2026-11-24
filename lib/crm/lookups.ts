@@ -1,13 +1,13 @@
 import "server-only";
 import type { AiTool, AiToolCall } from "@/lib/ai/provider";
-import { fullName } from "@/lib/format";
+import { fullName, longDay } from "@/lib/format";
 import type { companiesArea } from "./companies";
-import type { NoLiveSandbox } from "./core";
+import { isDay, type NoLiveSandbox } from "./core";
 import type { DealCard, pipelineArea } from "./deals";
 import { cut, named } from "./prompts";
 import type { retainersArea } from "./retainers";
 import type { Owner } from "./team";
-import { DEAL_STAGES, daysFrom, isOpenStage, type Day, type DealKind, type DealStage } from "./terms";
+import { DEAL_STAGES, isOpenStage, type Day, type DealKind, type DealStage } from "./terms";
 
 // What Ask the pipeline may look up: a fixed, read-only list, each through the
 // visitor's own session, so RLS holds it to their Sandbox.
@@ -26,12 +26,17 @@ const MAX_ROWS = 40;
 const MAX_ACTIVITIES = 10;
 const MAX_TEXT = 300;
 const MAX_STEP = 120;
-const MAX_DAYS = 3650;
 // What every lookup of one question may hand the model, all together.
 const MAX_OUTPUT = 30_000;
 const MAX_CALLS = 12;
 
 const EVERYONE = "everyone";
+// Exact days: asked for "next month" as a number of days, a model counts 31 from today.
+const PERIOD = {
+  from: { type: "string", description: "First day, as YYYY-MM-DD." },
+  to: { type: "string", description: "Last day, as YYYY-MM-DD." },
+};
+const BAD_PERIOD = "from and to must be days as YYYY-MM-DD, from no later than to.";
 const nullable = (type: string, values?: readonly string[]) => ({ type: [type, "null"], ...(values && { enum: [...values, null] }) });
 const params = (properties: Record<string, unknown>) => ({
   type: "object",
@@ -113,13 +118,14 @@ export function createLookups({ companies, pipeline, retainers }: Areas, { team,
       return { label: dealsLabel({ stage, owner, kind, overdue }), output: rows(deals) };
     },
 
-    async retainers_ending({ within_days }) {
-      if (!isDays(within_days)) return problem("within_days must be a whole number of days.");
+    async retainers_ending(args) {
+      if (!isPeriod(args)) return problem(BAD_PERIOD);
+      const { from, to } = args;
       const read = await retainers.list({ today });
       if (!read.ok) return gone(read.error);
-      const ending = read.value.filter((each) => each.state !== "Ended" && daysFrom(today, each.endDate) <= within_days);
+      const ending = read.value.filter((each) => each.state !== "Ended" && each.endDate >= from && each.endDate <= to);
       return {
-        label: `Retainers ending within ${within_days} days`,
+        label: `Retainers ending ${period(from, to)}`,
         output: {
           total: ending.length,
           retainers: ending.slice(0, MAX_ROWS).map((each) => ({
@@ -171,14 +177,15 @@ export function createLookups({ companies, pipeline, retainers }: Areas, { team,
       };
     },
 
-    async lost_deals({ within_days }) {
-      if (!isDays(within_days)) return problem("within_days must be a whole number of days.");
+    async lost_deals(args) {
+      if (!isPeriod(args)) return problem(BAD_PERIOD);
+      const { from, to } = args;
       const read = await pipeline.closed({ today, owners: EVERYONE });
       if (!read.ok) return gone(read.error);
-      const lost = read.value.filter((deal) => deal.stage === "Lost" && deal.closedOn && daysFrom(deal.closedOn, today) <= within_days);
+      const lost = read.value.filter((deal) => deal.stage === "Lost" && deal.closedOn && deal.closedOn >= from && deal.closedOn <= to);
       const reasons: Record<string, number> = {};
       for (const { lostReason } of lost) if (lostReason) reasons[lostReason] = (reasons[lostReason] ?? 0) + 1;
-      return { label: `Lost Deals in the last ${within_days} days`, output: { ...rows(lost), reasons } };
+      return { label: `Deals Lost ${period(from, to)}`, output: { ...rows(lost), reasons } };
     },
 
     async pipeline_totals() {
@@ -209,8 +216,8 @@ export function createLookups({ companies, pipeline, retainers }: Areas, { team,
     },
     {
       name: "retainers_ending",
-      description: "Active Retainers ending within this many days from today, and the open Renewal of each, if any.",
-      parameters: params({ within_days: { type: "integer" } }),
+      description: "Active Retainers ending in a period, first and last day included, and the open Renewal of each, if any.",
+      parameters: params(PERIOD),
     },
     {
       name: "company_activities",
@@ -219,8 +226,8 @@ export function createLookups({ companies, pipeline, retainers }: Areas, { team,
     },
     {
       name: "lost_deals",
-      description: "Deals Lost in the last so many days, each with its Lost reason, and how many for each reason.",
-      parameters: params({ within_days: { type: "integer" } }),
+      description: "Deals Lost in a period, first and last day included, each with its Lost reason, and how many for each reason.",
+      parameters: params(PERIOD),
     },
     { name: "pipeline_totals", description: "How many open Deals and how much Monthly value is in each Stage.", parameters: params({}) },
   ];
@@ -267,7 +274,12 @@ const isOneOf = <T extends string>(value: unknown, values: readonly T[]): value 
 const isBooleanOrNull = (value: unknown): value is boolean | null | undefined =>
   value === null || value === undefined || typeof value === "boolean";
 
-const isDays = (value: unknown): value is number => Number.isInteger(value) && (value as number) >= 0 && (value as number) <= MAX_DAYS;
+const isOneDay = (value: unknown): value is Day => typeof value === "string" && isDay(value);
+const isPeriod = (args: Record<string, unknown>): args is { from: Day; to: Day } =>
+  isOneDay(args.from) && isOneDay(args.to) && args.from <= args.to;
+
+/** "Dec 1, 2026 to Dec 31, 2026". */
+const period = (from: Day, to: Day) => `${longDay(from)} to ${longDay(to)}`;
 
 type DealFilter = { stage?: DealStage | null; owner?: string | null; kind?: DealKind | null; overdue?: boolean | null };
 
