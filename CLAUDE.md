@@ -256,6 +256,13 @@ workflow demo.
   2026-11-24). There's no CLI access to the shared project; it's one transaction, undone if anything
   outside `crm` would change.
 - **The service key isn't set on Vercel** (decided 2026-11-24). No request code uses it.
+- **The GitHub repo starts private and goes public once the live tour passes** (decided 2026-11-24,
+  refines the 2026-11-22 entry). Vercel needs a repo before the tour can run.
+- **The live demo uses Supabase's publishable key** (decided 2026-11-24). The old anon key is being
+  dropped by the end of 2026. The variable keeps its name, `SUPABASE_ANON_KEY`.
+- **Live anonymous sign-ins: 300 an hour, CAPTCHA off** (decided 2026-11-24). They all come from
+  Vercel's servers, which can't answer a CAPTCHA; each network is limited by this app.
+- **The live daily AI cap starts at 100** (decided 2026-11-24). Until real cost per action is measured.
 
 ## Open questions
 - A proper logo mark (the prototype's is a placeholder).
