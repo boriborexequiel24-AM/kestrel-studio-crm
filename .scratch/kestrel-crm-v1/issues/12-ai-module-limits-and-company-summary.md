@@ -25,4 +25,4 @@ Notes for later tickets:
 - Ticket 13: widen `act`'s `"summary"` to the new feature.
 - Ticket 14: one message can need several provider calls. `act` makes one call and logs it once, so give it a function that may call the provider several times and sum the usage. Cut-off answers come back with `complete: false`, and tool arguments that aren't JSON as null.
 - Ticket 15: set `AI_PROVIDER=openai`, try one real summary, and read its cost in `crm.ai_usage` before settling `DEMO_DAILY_AI_ACTION_CAP`. Reasoning effort is always sent, so a model without reasoning may refuse it. At the worst case (a full prompt and 800 tokens out) an action costs roughly 1 to 3 cents on gpt-5.4-mini.
-- Accepted risk: someone with the anon key (server-only here) could fill the demo-wide limit without spending credits, or log a wrong cost, up to $5, for their own actions.
+- Accepted trade-off: usage is counted by functions a visitor's own session may call, so someone calling the API directly could use up the demo-wide limit or log a wrong cost (up to $5) for their own actions. They can't reach the provider, and the database's own ceilings still apply.

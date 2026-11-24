@@ -6,9 +6,9 @@ Sources: `CLAUDE.md` (Decisions), `GLOSSARY.md`, `docs/adr/0001-sandboxes-via-an
 
 ## Problem Statement
 
-Zeki builds automation and AI systems for small businesses. His portfolio already shows CRM sync and lead routing as n8n, Make and Zapier workflows, but nothing shows that he can build a complete, multi-screen web app with real auth and AI built in. A prospective client who wonders "could he build our own tool?" has nothing to click.
+Zeki builds automation and AI systems for small businesses. The portfolio already shows CRM sync and lead routing as n8n, Make and Zapier workflows. What's missing is a complete, multi-screen web app with real auth and AI built in, that a visitor can click through for themselves.
 
-The prospect needs to try a realistic tool in about five minutes, without signing up, without seeing someone else's edits, and without worrying about breaking it. Zeki needs that demo to stay cheap and safe to leave online: it runs on his OpenAI credits and lives in a Supabase project shared with his other demos.
+The visitor needs to try a realistic tool in about five minutes, without signing up, without seeing someone else's edits, and without worrying about breaking it. Zeki needs that demo to stay cheap and safe to leave online: every AI action costs money, and it lives in a Supabase project shared with other demos.
 
 ## Solution
 
@@ -143,7 +143,7 @@ AI use is capped per Sandbox and across the whole demo, and every AI action is l
 86. As Zeki, I want Sandbox creation limited per hashed IP, so that anonymous sign-up can't be abused.
 87. As Zeki, I want the CRM to live in its own `crm` schema, so that it can't touch the other demos' data in the shared project.
 88. As Zeki, I want automated tests proving one Sandbox can never read or change another's data, so that I can leave the demo online with confidence.
-89. As Zeki, I want automated tests proving the AI limits hold, so that a public demo can't drain my credits.
+89. As Zeki, I want automated tests proving the AI limits hold, so that a public demo's cost stays bounded.
 90. As a prospect's developer, I want to read the code on GitHub once v1 works, so that I can judge the quality of the build.
 
 ### Look and accessibility

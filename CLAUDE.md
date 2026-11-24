@@ -1,8 +1,8 @@
-# Big Test
+# Kestrel Studio CRM
 
 ## Overview
 A portfolio and demo project by Zeki (Exequiel). A full CRM web app with AI built in,
-made to impress prospective clients. It's a standalone product for a fictional
+that anyone can try. It's a standalone product for a fictional
 marketing agency, separate from the Copperline demos (`../Lead Capture/`,
 `../Real Work Systems/`, `../TBD/`).
 
@@ -13,23 +13,23 @@ workflow demo.
 
 ## Decisions
 - **Standalone CRM for a fictional marketing agency** (decided 2026-11-21). Not tied to
-  Copperline. An agency is close to the clients Zeki pitches, so they can picture using it.
+  Copperline. An agency's work is easy to picture: deals, proposals, retainers.
   Pipeline runs from prospect to signed retainer, with proposals, client accounts and renewals.
 - **AI built in** (decided 2026-11-21). Normal CRM screens plus AI features, e.g. summarize a
   contact's history, draft follow-ups, score deals, answer questions about the pipeline.
 - **Each visitor gets their own sandbox** (decided 2026-11-21). No sign-up: a visitor gets a
   private copy filled with sample data, can change anything, and it resets after 24 hours.
 - **Same stack as the other demos** (decided 2026-11-21). Next.js + Tailwind on Vercel,
-  Supabase for the database and auth, OpenAI for AI (Zeki's existing credits; keep the
-  provider swappable, don't push Anthropic credits).
+  Supabase for the database and auth, OpenAI for AI (keep the provider
+  swappable).
 - **v1 is sized for a 5-minute self-guided tour** (decided 2026-11-22). Anything that doesn't
   help a prospect's first look waits for v2.
 - **Visitor plays one persona, Maya, Account Director** (decided 2026-11-22). Teammates appear
   only as owners of Deals and Activities. No roles or permissions in v1.
 - **Core terms: Company, Contact, Deal, Proposal, Retainer, Activity** (decided 2026-11-22).
   Client and Prospect are a Company's status, derived from Retainers. See `GLOSSARY.md`.
-- **Framed as a custom internal tool for one agency, not SaaS** (decided 2026-11-22). It mirrors
-  what Zeki sells: a client's own tool with their name on it.
+- **Framed as a custom internal tool for one agency, not SaaS** (decided 2026-11-22). It shows
+  one company's own tool with its name on it.
 - **Agency: Kestrel Studio, a 12-person brand and performance agency** (decided 2026-11-22,
   pending a name clash check).
 - **v1 AI features: summary, draft follow-up, ask the pipeline** (decided 2026-11-22). Deal
@@ -37,7 +37,7 @@ workflow demo.
 - **Nothing really sends** (decided 2026-11-22). Drafts can be edited and copied; "Log as sent"
   only records an Activity.
 - **AI cap: about 30 AI actions per Sandbox per day, plus a demo-wide daily cap**
-  (decided 2026-11-22). Protects Zeki's OpenAI credits; same pattern as the other demos.
+  (decided 2026-11-22). Keeps a public demo's cost bounded; same pattern as the other demos.
 - **Entry: landing page with one "Open the demo" button, real session behind it, no login
   form** (decided 2026-11-22). Keeps "no sign-up" while still using real auth.
 - **Desktop-first, usable on a phone** (decided 2026-11-22). Prospects review a CRM at a desk.
@@ -263,9 +263,8 @@ workflow demo.
 - **Live anonymous sign-ins: 300 an hour, CAPTCHA off** (decided 2026-11-24). They all come from
   Vercel's servers, which can't answer a CAPTCHA; each network is limited by this app.
 - **The live daily AI cap starts at 100** (decided 2026-11-24). Until real cost per action is measured.
-- **The live daily AI cap is 300, and OpenAI auto-reload stays off** (decided 2026-11-24). Measured: about
-  $0.0026 a question, $0.001 or less for a summary or draft, so about $0.70 for a full day. Zeki watches
-  the balance.
+- **The live daily AI cap is 300** (decided 2026-11-24). Measured: about
+  $0.0026 a question, $0.001 or less for a summary or draft, so about $0.70 for a full day.
 - **Vercel functions run in Seoul (`icn1`), next to the database** (decided 2026-11-24). In
   Washington, the default, a page took 1.2 to 2 seconds; here 0.3 to 0.75.
 - **Vercel Authentication leaves the production address open** (decided 2026-11-24). Otherwise every
@@ -278,11 +277,11 @@ workflow demo.
 
 ## Open questions
 - A proper logo mark (the prototype's is a placeholder).
-- Project name (folder is still `Big Test`).
+- Renaming the local folder, still `Big Test`.
 
 ## Live
 - **Address:** https://kestrel-studio-crm.vercel.app (Vercel project `kestrel-studio-crm`, team
-  "Work with Zeki"; private GitHub repo `boriborexequiel24-AM/kestrel-studio-crm`).
+  "Work with Zeki"; GitHub repo `boriborexequiel24-AM/kestrel-studio-crm`).
 - **Database:** `crm` in the shared Supabase project (Seoul, `ap-northeast-2`).
 - **Deploying the app:** a push to `main` deploys it. Environment variables and the function region are
   in Vercel and only apply after a redeploy.
@@ -348,4 +347,4 @@ Single-context: one `GLOSSARY.md` and `docs/adr/` at the repo root. See `docs/ag
 
 ## Notes
 - Platform: Windows 11 (PowerShell / Git Bash).
-- Git repo initialized 2026-11-22 (branch `main`). Remote `origin` is private until the repo goes public.
+- Git repo initialized 2026-11-22 (branch `main`). Remote `origin` is on GitHub.

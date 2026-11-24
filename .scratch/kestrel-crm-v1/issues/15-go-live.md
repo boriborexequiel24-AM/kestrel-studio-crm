@@ -37,4 +37,4 @@ Left for later:
 - About 155 sample Activities, not ~300.
 - Before the repo goes public: tidy the internal notes, add a README.
 - A real phone, Safari and the Copy button are unchecked. `components/app/coming-soon.tsx` is unused.
-- OpenRouter as a second provider, if OpenAI's credit runs low.
+- A second AI provider behind the same interface.
