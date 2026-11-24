@@ -5,6 +5,7 @@ import { companiesArea } from "./companies";
 import { contactsArea } from "./contacts";
 import { dealsArea, pipelineArea } from "./deals";
 import type { CrmContext, CrmSupabaseClient } from "./core";
+import { homeArea } from "./home";
 import { proposalsArea } from "./proposals";
 import { retainersArea } from "./retainers";
 import { sandboxArea, type SandboxLimits } from "./sandbox";
@@ -52,6 +53,7 @@ export {
 export type { ContactInput } from "./contacts";
 export type { LineItem, Proposal, ProposalInput } from "./proposals";
 export type { Retainer } from "./retainers";
+export type { HomeOverview } from "./home";
 export type { ActivityFields, ActivityInput } from "./activities";
 
 export type CrmDeps = { ai?: AiProvider; limits: SandboxLimits };
@@ -61,6 +63,8 @@ export function createCrm(supabase: CrmSupabaseClient, deps: CrmDeps) {
   const { area: sandbox, inLiveSandbox } = sandboxArea(supabase, db, deps.limits);
 
   const context: CrmContext = { db, inLiveSandbox };
+  const pipeline = pipelineArea(context);
+  const retainers = retainersArea(context);
   return {
     sandbox,
     team: teamArea(context),
@@ -68,9 +72,10 @@ export function createCrm(supabase: CrmSupabaseClient, deps: CrmDeps) {
     contacts: contactsArea(context),
     activities: activitiesArea(context),
     deals: dealsArea(context),
-    pipeline: pipelineArea(context),
+    pipeline,
     proposals: proposalsArea(context),
-    retainers: retainersArea(context),
+    retainers,
+    home: homeArea({ pipeline, retainers }),
   };
 }
 

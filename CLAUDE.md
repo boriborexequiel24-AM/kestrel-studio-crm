@@ -209,6 +209,13 @@ workflow demo.
   2026-11-24). The header would fill a third of the screen. It sticks from 640px up.
 - **Form fields are 16px text on phones, 14px above** (decided 2026-11-24). iOS zooms the page in on
   anything smaller.
+- **"Open the demo" and Start over land on Home** (decided 2026-11-24). The tour starts where Maya's
+  day does.
+- **Home's attention list has overdue Next steps first, longest first, then missing ones; a Next step
+  without a due date isn't listed** (decided 2026-11-24). It has an action, and no date to miss.
+- **Home's Retainers link to their Company** (decided 2026-11-24). It shows the Retainer and its Renewal.
+- **Two sample Deals have no Next step, one of them Maya's** (decided 2026-11-24). The attention list
+  shows both kinds.
 
 ## Open questions
 - A proper logo mark (the prototype's is a placeholder).

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 import { CalendarClock, Check, CircleX, MessageSquareText, Repeat, Users } from "lucide-react";
+import { LinkSwitch } from "@/components/app/link-switch";
 import { PageHeader } from "@/components/app/page-header";
 import { RelativeTime } from "@/components/app/relative-time";
 import { ACTIVITY_KIND_ICON } from "@/components/companies/activity-kind";
@@ -68,14 +69,14 @@ async function PipelineControls({ searchParams, openDealId }: { searchParams: Se
     `${openDealId ? `/deals/${openDealId}` : "/pipeline"}${choiceQuery({ ...choice, ...change })}`;
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <Switch
+      <LinkSwitch
         label="Open or Closed Deals"
         options={[
           { label: "Open", href: href({ closed: false }), active: !choice.closed },
           { label: "Closed", href: href({ closed: true }), active: choice.closed },
         ]}
       />
-      <Switch
+      <LinkSwitch
         label="Whose Deals"
         options={[
           { label: "Everyone", href: href({ mine: false }), active: !choice.mine },
@@ -83,26 +84,6 @@ async function PipelineControls({ searchParams, openDealId }: { searchParams: Se
         ]}
       />
       <NewDealButton options={await dealFormOptions(crm)} mine={choice.mine} />
-    </div>
-  );
-}
-
-function Switch({ label, options }: { label: string; options: { label: string; href: string; active: boolean }[] }) {
-  return (
-    <div role="group" aria-label={label} className="flex rounded-lg border border-border bg-card p-1 text-[14px] font-semibold">
-      {options.map((option) => (
-        <Link
-          key={option.label}
-          href={option.href}
-          scroll={false}
-          aria-current={option.active ? "true" : undefined}
-          className={`relative flex h-9 items-center rounded-md px-4 transition-colors duration-150 after:absolute after:inset-x-0 after:-inset-y-1 ${
-            option.active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          {option.label}
-        </Link>
-      ))}
     </div>
   );
 }

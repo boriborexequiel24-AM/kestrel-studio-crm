@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import { ComingSoon } from "@/components/app/coming-soon";
+import { HomeView } from "@/components/home/home-view";
 
 export const metadata: Metadata = { title: "Home" };
 
-export default function HomePage() {
-  return <ComingSoon title="Home" />;
+export default function HomePage({ searchParams }: PageProps<"/home">) {
+  return <HomeView searchParams={searchParams} />;
 }

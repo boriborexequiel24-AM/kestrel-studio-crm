@@ -354,7 +354,8 @@ select pg_temp.template(), pg_temp.activity(v.ord), pg_temp.company(v.company),
 -- open Renewals come after the Retainers they renew). Numbers have gaps on
 -- purpose: ids stay stable when a Deal is dropped.
 -- `due` is the Next step's due day relative to the anchor's day: below zero is
--- overdue, 0 is due today. Each Deal starts when its Company was added.
+-- overdue, 0 is due today. Two Deals have no Next step, for Home's attention
+-- list. Each Deal starts when its Company was added.
 insert into crm.deals (sandbox_id, id, company_id, owner_id, title, kind, stage, estimated_monthly_value,
                        next_step, next_step_due, created_at)
 select pg_temp.template(), pg_temp.deal(v.n), c.id, pg_temp.teammate(v.owner), v.title, 'New business',
@@ -372,7 +373,7 @@ select pg_temp.template(), pg_temp.deal(v.n), c.id, pg_temp.teammate(v.owner), v
     (9, 21, 3, 'Lead generation website and search', 'Negotiation', 4800, 'Nudge Frank on the revised scope', -9),
     (10, 22, 5, 'Enrollment campaign', 'Discovery', 9000, 'Send Darnell a rough budget', 2),
     (11, 23, 4, 'Toy launch ads sprint', 'New', 3500, 'Confirm a start date with Willa', 1),
-    (12, 24, 1, 'Shopper marketing for two grocery chains', 'Discovery', 10500, 'Draft the shelf reset plan with Megan', 4),
+    (12, 24, 1, 'Shopper marketing for two grocery chains', 'Discovery', 10500, '', null),
     (14, 26, 2, 'Fort Lauderdale launch', 'Qualified', 13000, 'Send Mateo the launch plan outline', -1),
     (15, 27, 5, 'Cosmetic services campaign', 'Proposal sent', 9500, 'Walk Chase through the proposal', 2),
     (16, 28, 4, 'Membership drive', 'New', 4000, 'Book a gym visit with Bo', 2),
@@ -381,7 +382,7 @@ select pg_temp.template(), pg_temp.deal(v.n), c.id, pg_temp.teammate(v.owner), v
     (20, 32, 4, 'Off-season dining campaign', 'Discovery', 4500, 'Send Colin the off-season promo ideas', -6),
     (21, 33, 3, 'Lower cost per install', 'Proposal sent', 16000, 'Present the proposal to Raj and Kristen', 1),
     (24, 37, 3, 'Associate recruiting and brand', 'Negotiation', 7000, 'Send Daniel our references', -3),
-    (25, 38, 4, 'Apparel ecommerce growth', 'New', 5500, 'Intro call with Jesse and Sky', 2),
+    (25, 38, 4, 'Apparel ecommerce growth', 'New', 5500, '', null),
     (26, 40, 1, 'One agency for all 10 sites', 'Qualified', 18000, 'Collect site-level sales from Brianna', 1)
   ) as v (n, company, owner, title, stage, value, next_step, due)
   join crm.companies c on c.sandbox_id = pg_temp.template() and c.id = pg_temp.company(v.company);

@@ -166,7 +166,7 @@ AI use is capped per Sandbox and across the whole demo, and every AI action is l
 
 - **CRM module (server-only, the one seam).** Every page's server code, form actions and route handlers call this module and nothing else for data. It takes the visitor's session and exposes operations grouped by area:
   - Sandbox: open a new Sandbox (rate-limit check, anonymous sign-in, build from Template), get Sandbox status (time left, AI actions left), Start over.
-  - Home: my attention list, renewing soon, pipeline value by Stage (each with Mine or Everyone).
+  - Home: my attention list, renewing soon (each with Mine or Everyone), pipeline value by Stage (agency-wide).
   - Pipeline: board (KPI strip, Owner x Stage grid, Mine or Everyone), closed Deals table, move a Deal to a Stage (with Lost reason, or the Won confirmation).
   - Deals, Proposals, Companies, Contacts, Activities, Retainers: the reads and writes listed in the user stories.
   - AI: summarize a Company, draft a follow-up for a Deal, log a draft as sent, ask the pipeline.

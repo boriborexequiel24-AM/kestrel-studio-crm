@@ -15,7 +15,7 @@ export async function openDemo(): Promise<OpenDemoState> {
   const opened = await crm.sandbox.open({ ip: await visitorIp(), today: await visitorToday() });
   if (!opened.ok) return { limitReached: true };
   await rememberSandboxExpiry(opened.value.expiresAt);
-  redirect("/companies");
+  redirect("/home");
 }
 
 /** The visitor's address as the hosting platform reports it. Only its salted hash is stored. */
@@ -30,5 +30,5 @@ export async function startOver(): Promise<FormState> {
   const reset = await crm.sandbox.startOver({ today: await visitorToday() });
   if (!reset.ok) redirect(landingFor(reset.error));
   // Records Maya added are gone, so the page she was on may be too.
-  redirect("/companies");
+  redirect("/home");
 }

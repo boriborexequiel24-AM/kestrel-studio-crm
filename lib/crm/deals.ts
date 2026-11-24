@@ -256,10 +256,11 @@ export function dealsArea({ db, inLiveSandbox }: CrmContext) {
   };
 }
 
-/** Whose Deals the Pipeline shows, on the visitor's own today. */
+/** Whose work a view shows, the Persona's or the whole team's, on the visitor's own today. */
 export type PipelineScope = { today: Day; owners: "everyone" | "mine" };
 
-const inScope = (team: Owner[], { owners }: PipelineScope) => team.filter((owner) => owners === "everyone" || owner.isPersona);
+/** The Owners a view covers: the Persona, or the whole team. */
+export const inScope = (team: Owner[], { owners }: PipelineScope) => team.filter((owner) => owners === "everyone" || owner.isPersona);
 
 export function pipelineArea({ db, inLiveSandbox }: CrmContext) {
   return {
