@@ -57,6 +57,7 @@ const MESSAGES: Record<string, { message: string; field?: string }> = {
     message: "The whole demo has reached its AI limit for today, so it's nothing you did. Everything else keeps working, and the AI is back tomorrow.",
   },
   deal_closed: { message: "This Deal is closed, so it has no Next step to write about. Reload the page." },
+  question_required: { message: "Type a question first." },
   draft_empty: { message: "Write the email first.", field: "text" },
   ai_unavailable: { message: "The AI didn't answer. That used one AI action. Try again in a moment." },
   nothing_to_summarize: { message: "There's nothing to summarize yet. Log an Activity or add a Deal first." },
@@ -74,9 +75,14 @@ export function toFormState<E extends string>(result: Result<unknown, E | NoLive
   }
   const error: string = result.error;
   if (error === "no_sandbox" || error === "sandbox_expired") redirect(landingFor(error));
-  const known = MESSAGES[error] ?? { message: "Something went wrong. Try again." };
+  const known = messageFor(error);
   const values = Object.fromEntries([...form].map(([name, value]) => [name, String(value)]));
   return { status: "error", ...known, values, at: Date.now() };
+}
+
+/** What a rule the CRM module reported means to Maya. */
+export function messageFor(error: string): { message: string; field?: string } {
+  return MESSAGES[error] ?? { message: "Something went wrong. Try again." };
 }
 
 /** A form field as text ("" when missing). */

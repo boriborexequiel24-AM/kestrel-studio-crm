@@ -213,11 +213,13 @@ describe("the Closed list", () => {
 
   it("comes back as it was after Start over", async () => {
     const { crm } = await visitorWithSandbox();
-    const before = await closed(crm);
+    // Days come back the same; moments, such as when a Proposal was sent, shift to now.
+    const seen = async () => (await closed(crm)).map((deal) => ({ ...deal, proposal: deal.proposal && { ...deal.proposal, sentAt: null } }));
+    const before = await seen();
     expectOk(await crm.deals.moveToStage(before.find((deal) => deal.stage === "Lost")!.id, "New", TODAY));
 
     expectOk(await crm.sandbox.startOver(TODAY));
 
-    expect(await closed(crm)).toEqual(before);
+    expect(await seen()).toEqual(before);
   });
 });

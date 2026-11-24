@@ -241,6 +241,15 @@ workflow demo.
   2026-11-24). Keeps its cost down; Log as sent costs no AI action.
 - **Logging a draft whose Contact has gone records it without the Contact** (decided 2026-11-24). The
   email was still sent; a refusal would be a dead end.
+- **One question may take up to 4 calls to the AI and 12 lookups, 30,000 characters in all** (decided
+  2026-11-24). It counts as one AI action, so its cost has to be held some other way.
+- **The AI names records by short names ("D1"), and the app puts in the real name and link** (decided
+  2026-11-24). It can't invent a record, and long ids cost tokens.
+- **Ask the pipeline gets the last 4 answered questions, each answer up to 1,500 characters** (decided
+  2026-11-24). Enough for "and the last one?".
+- **The chat lives in the app frame: it survives moving around, and goes on reload, Start over, a new
+  Sandbox or Clear chat** (decided 2026-11-24). It's stored nowhere.
+- **A Deal's Sheet has its own "Ask the pipeline" button** (decided 2026-11-24). It covers the top bar.
 
 ## Open questions
 - A proper logo mark (the prototype's is a placeholder).

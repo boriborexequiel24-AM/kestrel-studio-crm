@@ -34,12 +34,13 @@ export function createOpenAiProvider({ apiKey, model }: { apiKey: string; model:
   };
 }
 
-function toBody({ instructions, input, tools, maxOutputTokens }: AiRequest, model: string) {
+function toBody({ instructions, input, tools, mustAnswer, maxOutputTokens }: AiRequest, model: string) {
   return {
     model,
     instructions,
     input: input.map(toItem),
-    tools: tools?.map((tool) => ({ type: "function", ...tool })),
+    tools: tools?.map((tool) => ({ type: "function", ...tool, strict: true })),
+    tool_choice: mustAnswer ? "none" : undefined,
     max_output_tokens: maxOutputTokens,
     reasoning: { effort: "low" },
     store: false,

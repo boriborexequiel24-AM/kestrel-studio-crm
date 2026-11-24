@@ -55,7 +55,7 @@ export type { ContactInput } from "./contacts";
 export type { LineItem, Proposal, ProposalInput } from "./proposals";
 export type { Retainer } from "./retainers";
 export type { HomeOverview } from "./home";
-export type { AiActionsLeft, AiLimits, AiRefusal, FollowUpDraft } from "./ai";
+export type { AiActionsLeft, AiLimits, AiRefusal, Answer, ChatMessage, FollowUpDraft } from "./ai";
 export type { Summary } from "./summaries";
 export type { ActivityFields, ActivityInput } from "./activities";
 
@@ -83,7 +83,7 @@ export function createCrm(supabase: CrmSupabaseClient, deps: CrmDeps) {
     proposals: proposalsArea(context),
     retainers,
     home: homeArea({ pipeline, retainers }),
-    ai: aiArea(context, { provider: deps.ai, limits: deps.limits, companies, deals, activities, team }),
+    ai: aiArea(context, { provider: deps.ai, limits: deps.limits, companies, deals, pipeline, retainers, activities, team }),
   };
 }
 

@@ -9,6 +9,13 @@ export type FakeAiProvider = AiProvider & {
 
 const FAKE_ANSWER = "- Fake AI response, line one.\n- Fake AI response, line two.\n- Fake AI response, line three.";
 
+/** With tools on offer and nothing scripted, it uses the first one once, so a chat shows lookups and links locally. */
+function unscripted({ tools, input, mustAnswer }: AiRequest): Partial<AiResponse> {
+  if (!tools) return {};
+  if (mustAnswer || input.at(-1)?.type === "tool_result") return { text: "Fake AI answer. The first Deal found is [[D1]], at [[C1]]." };
+  return { text: "", toolCalls: [{ id: "fake-call", name: tools[0].name, arguments: {} }] };
+}
+
 /**
  * A provider for tests and offline development. It never calls a network.
  * Without a script it answers with three fixed lines.
@@ -23,7 +30,7 @@ export function createFakeAiProvider(): FakeAiProvider {
     },
     async respond(request) {
       requests.push(request);
-      const next = queue.shift() ?? {};
+      const next = queue.shift() ?? unscripted(request);
       return {
         text: next.text ?? FAKE_ANSWER,
         toolCalls: next.toolCalls ?? [],

@@ -1,10 +1,12 @@
 import "server-only";
-import type { AiProvider, AiRequest, AiResponse } from "@/lib/ai/provider";
+import type { AiInputItem, AiProvider, AiResponse, AiUsage } from "@/lib/ai/provider";
 import type { Activity, activitiesArea } from "./activities";
 import type { companiesArea } from "./companies";
 import { clean, fail, isId, isMissingReference, ok, ruleBroken, unexpected, type CrmContext, type NoLiveSandbox, type Result } from "./core";
-import type { DealDetail, dealsArea } from "./deals";
-import { SUMMARY_LINES, followUpRequest, summaryRequest, toEmail, toLines } from "./prompts";
+import type { DealDetail, dealsArea, pipelineArea } from "./deals";
+import { createLookups, type RecordLink } from "./lookups";
+import { SUMMARY_LINES, askRequest, followUpRequest, summaryRequest, toAnswer, toChat, toEmail, toLines } from "./prompts";
+import type { retainersArea } from "./retainers";
 import { SEEN_COLUMNS, SUMMARY_COLUMNS, activitiesSeen, toSeen, toSummary, type Summary } from "./summaries";
 import type { teamArea } from "./team";
 import { isOpenStage, type Day } from "./terms";
@@ -25,6 +27,12 @@ const held = (limit: number, ceiling: number) => Math.min(Math.max(limit, 0), ce
 /** A follow-up email to edit, and who it's to. It isn't saved anywhere. */
 export type FollowUpDraft = { text: string; contact: { id: string; name: string } | null };
 
+/** One message of a chat. The chat lives in the visitor's tab and comes along with each question. */
+export type ChatMessage = { role: "user" | "assistant"; content: string };
+
+/** An answer, with the Deals and Companies it names as links, and what was looked up for it. */
+export type Answer = { parts: ({ type: "text"; text: string } | RecordLink)[]; lookedUp: string[] };
+
 type LogRefusal = Extract<Awaited<ReturnType<ReturnType<typeof activitiesArea>["log"]>>, { ok: false }>["error"];
 
 type Deps = {
@@ -32,20 +40,27 @@ type Deps = {
   limits: AiLimits;
   companies: ReturnType<typeof companiesArea>;
   deals: ReturnType<typeof dealsArea>;
+  pipeline: ReturnType<typeof pipelineArea>;
+  retainers: ReturnType<typeof retainersArea>;
   activities: ReturnType<typeof activitiesArea>;
   team: ReturnType<typeof teamArea>;
 };
 
-export function aiArea({ db, inLiveSandbox }: CrmContext, { provider, limits, companies, deals, activities, team }: Deps) {
+export function aiArea({ db, inLiveSandbox }: CrmContext, deps: Deps) {
+  const { provider, limits, companies, deals, activities, team } = deps;
   const perSandbox = held(limits.aiActionsPerSandbox, CEILING.aiActionsPerSandbox);
   const perDay = held(limits.aiActionsPerDay, CEILING.aiActionsPerDay);
 
   /**
-   * Runs one AI action: the limits are checked and the usage row written before
-   * the provider is called, so an action that fails still counts. A cut-off
-   * answer is no use to anyone, but what it used is logged.
+   * Runs one AI action, which may call the provider more than once. The limits
+   * are checked and the usage row written before it's called, so an action that
+   * fails still counts, and whatever it used by then is logged. `work` returns
+   * null when the answer is no use to anyone.
    */
-  async function act(feature: "summary" | "draft", request: AiRequest): Promise<Result<AiResponse, AiRefusal>> {
+  async function act<T>(
+    feature: "summary" | "draft" | "ask",
+    work: (respond: AiProvider["respond"]) => Promise<T | null>,
+  ): Promise<Result<T, AiRefusal>> {
     const begun = await db.rpc("begin_ai_action", {
       feature,
       sandbox_limit: perSandbox,
@@ -54,24 +69,46 @@ export function aiArea({ db, inLiveSandbox }: CrmContext, { provider, limits, co
     if (begun.error) {
       return fail(ruleBroken(begun.error, "ai_sandbox_limit_reached", "ai_daily_cap_reached") ?? unexpected(begun.error));
     }
-    let response: AiResponse;
+
+    const used: AiUsage[] = [];
+    let providerFailed = false;
+    const respond: AiProvider["respond"] = async (request) => {
+      try {
+        const response = await provider.respond(request);
+        used.push(response.usage);
+        return response;
+      } catch (error) {
+        providerFailed = true;
+        throw error;
+      }
+    };
+    let result: T | null = null;
+    let bug: unknown;
     try {
-      response = await provider.respond(request);
+      result = await work(respond);
     } catch (error) {
-      console.error("AI action failed:", error);
-      return fail("ai_unavailable");
+      if (providerFailed) console.error("AI action failed:", error);
+      else bug = error;
     }
-    const { inputTokens, outputTokens, costUsd } = response.usage;
-    const finished = await db.rpc("finish_ai_action", {
-      action: begun.data,
-      input_tokens: inputTokens,
-      output_tokens: outputTokens,
-      cost_usd: costUsd ?? undefined,
-    });
-    // The answer is paid for, so a logging problem doesn't throw it away.
-    if (finished.error) console.error("AI usage wasn't logged:", finished.error.message);
-    return response.complete ? ok(response) : fail("ai_unavailable");
+
+    if (used.length) {
+      const total = (count: (usage: AiUsage) => number) => used.reduce((sum, usage) => sum + count(usage), 0);
+      const finished = await db.rpc("finish_ai_action", {
+        action: begun.data,
+        input_tokens: total((usage) => usage.inputTokens),
+        output_tokens: total((usage) => usage.outputTokens),
+        cost_usd: used.some((usage) => usage.costUsd === null) ? undefined : total((usage) => usage.costUsd!),
+      });
+      // The answer is paid for, so a logging problem doesn't throw it away.
+      if (finished.error) console.error("AI usage wasn't logged:", finished.error.message);
+    }
+    // Not the provider's doing, so not something to tell the visitor to retry.
+    if (bug) throw bug;
+    return result === null ? fail("ai_unavailable") : ok(result);
   }
+
+  /** What a whole answer says; nothing if it was cut off. */
+  const whole = (response: AiResponse) => (response.complete ? response.text : "");
 
   /** Saves a summary of exactly these Activities. The Sandbox may have run out while the AI was writing. */
   const save = (companyId: string, lines: string[], covered: Activity[]) =>
@@ -111,12 +148,12 @@ export function aiArea({ db, inLiveSandbox }: CrmContext, { provider, limits, co
         if (company.summary?.upToDate) return ok<Summary>(company.summary);
         if (!company.activities.length && !company.deals.length) return fail("nothing_to_summarize");
 
-        const answer = await act("summary", summaryRequest(company, view.today));
-        if (!answer.ok) return answer;
-        const lines = toLines(answer.value.text);
-        if (lines.length < SUMMARY_LINES) return fail("ai_unavailable");
+        const lines = await act("summary", async (respond) => {
+          const answer = toLines(whole(await respond(summaryRequest(company, view.today))));
+          return answer.length === SUMMARY_LINES ? answer : null;
+        });
         // An Activity logged since the Company was read isn't covered, so it makes this out of date.
-        return save(companyId, lines, company.activities);
+        return lines.ok ? save(companyId, lines.value, company.activities) : lines;
       }),
 
     /** An email for an open Deal's Next step, steered by an optional one-line instruction. Nothing is sent or saved. */
@@ -130,11 +167,41 @@ export function aiArea({ db, inLiveSandbox }: CrmContext, { provider, limits, co
         if (!sender) throw new Error("The Sandbox has no Persona.");
 
         const contact = mainContact(found.value);
-        const answer = await act("draft", followUpRequest(found.value, { contact, sender, instruction: clean(ask.instruction), today: ask.today }));
-        if (!answer.ok) return answer;
-        const text = toEmail(answer.value.text);
-        if (!text) return fail("ai_unavailable");
-        return ok<FollowUpDraft>({ text, contact: contact && { id: contact.id, name: contact.name } });
+        const request = followUpRequest(found.value, { contact, sender, instruction: clean(ask.instruction), today: ask.today });
+        return act("draft", async (respond): Promise<FollowUpDraft | null> => {
+          const text = toEmail(whole(await respond(request)));
+          return text ? { text, contact: contact && { id: contact.id, name: contact.name } } : null;
+        });
+      }),
+
+    /**
+     * Answers a question about the pipeline by looking things up in the
+     * visitor's own Sandbox. Read-only, and the chat isn't stored.
+     */
+    ask: (chat: { today: Day; messages: ChatMessage[] }) =>
+      inLiveSandbox(async (): Promise<Result<Answer, AiRefusal | NoLiveSandbox | "question_required">> => {
+        const messages = toChat(chat.messages);
+        if (!messages) return fail("question_required");
+        const listed = await team.list();
+        if (!listed.ok) return listed;
+        const about = { team: listed.value, today: chat.today };
+        const lookups = createLookups(deps, about);
+
+        const answered = await act("ask", async (respond) => {
+          const input: AiInputItem[] = messages.map((message) => ({ type: "message", ...message }));
+          for (let round = 1; round <= MAX_ROUNDS; round++) {
+            const response = await respond(askRequest({ ...about, input, tools: lookups.tools, mustAnswer: round === MAX_ROUNDS }));
+            if (!response.complete) return null;
+            if (!response.toolCalls.length) return toAnswerParts(toAnswer(response.text), lookups);
+            for (const call of response.toolCalls) {
+              input.push({ type: "tool_call", call }, { type: "tool_result", callId: call.id, output: await lookups.look(call) });
+            }
+            if (lookups.lost()) return null;
+          }
+          return null;
+        });
+        const lost = lookups.lost();
+        return lost ? fail(lost) : answered;
       }),
 
     /** Records a draft, as Maya left it, as an Email about its Deal. This is all that "sending" does. */
@@ -158,6 +225,39 @@ export function aiArea({ db, inLiveSandbox }: CrmContext, { provider, limits, co
         return logged;
       }),
   };
+}
+
+// Calls to the provider for one question: the last has to be the answer.
+const MAX_ROUNDS = 4;
+
+// "[[D1]]" as asked for, and the other ways a model writes it: "[[ d1 ]]",
+// "[[D1, C2]]", "[[D1: its title]]", "[D1]", or just "D1".
+const SHORT_NAMES = /\[\[([^\[\]]*)\]\]|\[([DC]\d{1,3})\]|\b([DC]\d{1,3})\b/g;
+
+/** Splits an answer at its short names, each becoming a link to the record a lookup found. */
+function toAnswerParts(text: string, lookups: ReturnType<typeof createLookups>): Answer | null {
+  if (!text) return null;
+  const parts: Answer["parts"] = [];
+  const say = (words: string) => {
+    if (words) parts.push({ type: "text", text: words });
+  };
+
+  let end = 0;
+  for (const match of text.matchAll(SHORT_NAMES)) {
+    const [written, doubled, single, bare] = match;
+    say(text.slice(end, match.index));
+    end = match.index + written.length;
+    const names = doubled === undefined ? [single ?? bare] : doubled.split(/[:|]/)[0].split(",");
+    names.forEach((name, index) => {
+      if (index) say(", ");
+      const link = lookups.link(name.trim().toUpperCase());
+      // Bare text may only look like a short name, so it stays if it isn't one.
+      if (link) parts.push(link);
+      else say(bare ?? "(a record I can't find)");
+    });
+  }
+  say(text.slice(end));
+  return { parts, lookedUp: lookups.labels() };
 }
 
 /** Who a follow-up goes to: whoever the Deal's latest Activity names, or else the Company's first Contact. */

@@ -47,7 +47,7 @@ export type DealCard = {
   /** USD a month: the Accepted or Sent Proposal's total, or the estimate when there is neither. */
   monthlyValue: number;
   /** The Proposal the Monthly value comes from; null means it's the estimate. */
-  proposal: { version: number; status: "Sent" | "Accepted" } | null;
+  proposal: { version: number; status: "Sent" | "Accepted"; sentAt: Date | null } | null;
   company: { id: string; name: string };
   owner: OwnerRef;
   nextStep: NextStep | null;
@@ -107,7 +107,7 @@ export type StageMove = { today: Day; proposalVersion?: number; lostReason?: Los
 
 export const DEAL_COLUMNS = `id, title, kind, renews_retainer_id, stage, estimated_monthly_value, next_step, next_step_due, lost_reason, closed_on,
   company:companies!inner(id, name), owner:teammates!inner(${OWNER_REF_COLUMNS}),
-  proposals(version, status, line_items:proposal_line_items(monthly_fee))`;
+  proposals(version, status, sent_at, line_items:proposal_line_items(monthly_fee))`;
 
 export function dealsArea({ db, inLiveSandbox }: CrmContext) {
   async function findDeal(id: string) {
@@ -385,13 +385,13 @@ type DealRow = {
   closed_on: string | null;
   company: { id: string; name: string };
   owner: { id: string; first_name: string; last_name: string; initials: string };
-  proposals: { version: number; status: ProposalStatus; line_items: { monthly_fee: number }[] }[];
+  proposals: { version: number; status: ProposalStatus; sent_at: string | null; line_items: { monthly_fee: number }[] }[];
 };
 
 /** The offer a Deal's Monthly value comes from. A Deal never has both a Sent and an Accepted Proposal. */
 function liveProposal(row: DealRow) {
-  for (const { version, status, line_items } of row.proposals) {
-    if (status === "Sent" || status === "Accepted") return { version, status, line_items };
+  for (const { version, status, sent_at, line_items } of row.proposals) {
+    if (status === "Sent" || status === "Accepted") return { version, status, sentAt: sent_at === null ? null : new Date(sent_at), line_items };
   }
   return null;
 }
@@ -404,7 +404,7 @@ export function toCard(row: DealRow, today: Day): DealCard {
     kind: row.kind,
     stage: row.stage,
     monthlyValue: offer ? monthlyTotal(offer.line_items) : row.estimated_monthly_value,
-    proposal: offer && { version: offer.version, status: offer.status },
+    proposal: offer && { version: offer.version, status: offer.status, sentAt: offer.sentAt },
     company: row.company,
     owner: toOwnerRef(row.owner),
     nextStep: row.next_step

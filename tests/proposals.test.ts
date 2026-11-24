@@ -17,7 +17,7 @@ describe("the sample Proposals", () => {
     expect(deals).toHaveLength(10);
     for (const deal of deals) {
       const sent = deal.proposals.find((proposal) => proposal.status === "Sent")!;
-      expect(deal.proposal).toEqual({ version: sent.version, status: "Sent" });
+      expect(deal.proposal).toEqual({ version: sent.version, status: "Sent", sentAt: sent.sentAt });
       expect(deal.monthlyValue).toBe(sent.lineItems.reduce((total, item) => total + item.monthlyFee, 0));
       const daysAgo = (Date.now() - sent.sentAt!.getTime()) / (24 * 60 * 60 * 1000);
       expect(daysAgo).toBeGreaterThan(0);

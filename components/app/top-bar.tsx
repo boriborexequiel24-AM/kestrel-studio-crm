@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { Search } from "lucide-react";
+import { AskButton } from "@/components/ai/ask-context";
+import { AskPanel } from "@/components/ai/ask-panel";
 import { valueOrLanding, requireLiveSandbox } from "@/lib/crm/server";
 import { Logo } from "./logo";
 import { MainNav } from "./main-nav";
@@ -14,16 +15,10 @@ export function TopBar() {
         </Link>
         <MainNav className="hidden md:block" />
         <div className="ml-auto flex items-center gap-3">
-          {/* Opens the Ask the pipeline panel once that feature lands. */}
-          <button
-            type="button"
-            disabled
-            title="Coming soon"
-            className="flex h-11 min-w-11 items-center justify-center gap-2 rounded-lg border border-border px-3 text-[14px] font-semibold text-muted-foreground disabled:cursor-not-allowed"
-          >
-            <Search className="size-4" aria-hidden />
-            <span className="sr-only sm:not-sr-only sm:whitespace-nowrap md:sr-only lg:not-sr-only">Ask the pipeline</span>
-          </button>
+          <AskButton labelClassName="sr-only sm:not-sr-only sm:whitespace-nowrap md:sr-only lg:not-sr-only" />
+          <Suspense>
+            <Ask />
+          </Suspense>
           <Suspense fallback={<PersonaBadgeShell />}>
             <PersonaBadge />
           </Suspense>
@@ -32,6 +27,11 @@ export function TopBar() {
       <MainNav className="overflow-x-auto border-t border-border px-2 md:hidden" />
     </header>
   );
+}
+
+async function Ask() {
+  const { crm, sandbox } = await requireLiveSandbox();
+  return <AskPanel sandboxId={sandbox.id} actions={valueOrLanding(await crm.ai.actionsLeft())} />;
 }
 
 async function PersonaBadge() {

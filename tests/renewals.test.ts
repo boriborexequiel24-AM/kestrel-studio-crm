@@ -66,7 +66,7 @@ describe("a Renewal", () => {
     const deal = await newDeal(crm, { companyId: retainer.company.id, renews: { retainerId: retainer.id, ...TODAY } });
 
     expect(await getDeal(crm, deal.id)).toMatchObject({ kind: "Renewal", stage: "New", retainer: { id: retainer.id } });
-    expect((await getRetainer(crm, retainer.id)).openRenewal).toEqual({ id: deal.id, stage: "New" });
+    expect((await getRetainer(crm, retainer.id)).openRenewal).toEqual({ id: deal.id, title: "Test Deal", stage: "New" });
     const board = expectOk(await crm.pipeline.board({ ...TODAY, owners: "everyone" }));
     expect(board.deals.find((card) => card.id === deal.id)?.kind).toBe("Renewal");
     expect((await getDeal(crm, (await newDeal(crm)).id)).kind).toBe("New business");

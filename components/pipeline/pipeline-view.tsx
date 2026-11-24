@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 import { CalendarClock, Check, CircleX, MessageSquareText, Repeat, Users } from "lucide-react";
+import { AskButton } from "@/components/ai/ask-context";
 import { FollowUp } from "@/components/ai/follow-up";
 import { SummaryCard } from "@/components/ai/summary-card";
 import { LinkSwitch } from "@/components/app/link-switch";
@@ -255,6 +256,7 @@ async function DealSheet({ id, searchParams }: { id: string; searchParams: Searc
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
+          <AskButton />
           <EditDealButton
             deal={{
               id: deal.id,

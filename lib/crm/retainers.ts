@@ -8,7 +8,7 @@ export type Retainer = {
   /** The won Deal it came from. */
   deal: { id: string; title: string };
   /** The open Deal to renew it, if there is one. */
-  openRenewal: { id: string; stage: OpenStage } | null;
+  openRenewal: { id: string; title: string; stage: OpenStage } | null;
   owner: OwnerRef;
   /** USD a month. */
   monthlyFee: number;
@@ -26,7 +26,7 @@ const ENDS_SOON_DAYS = 60;
 
 export const RETAINER_COLUMNS = `id, monthly_fee, start_date, end_date,
   company:companies!inner(id, name), deal:deals!retainers_deal_at_company!inner(id, title),
-  renewals:deals!deals_renews_retainer(id, stage), owner:teammates!inner(${OWNER_REF_COLUMNS})`;
+  renewals:deals!deals_renews_retainer(id, title, stage), owner:teammates!inner(${OWNER_REF_COLUMNS})`;
 
 export function retainersArea({ db, inLiveSandbox }: CrmContext) {
   return {
@@ -81,12 +81,12 @@ export function toRetainer(
     end_date: string;
     company: { id: string; name: string };
     deal: { id: string; title: string };
-    renewals: { id: string; stage: DealStage }[];
+    renewals: { id: string; title: string; stage: DealStage }[];
     owner: { id: string; first_name: string; last_name: string; initials: string };
   },
   today: Day,
 ): Retainer {
-  const [openRenewal] = row.renewals.flatMap(({ id, stage }) => (isOpenStage(stage) ? [{ id, stage }] : []));
+  const [openRenewal] = row.renewals.flatMap(({ id, title, stage }) => (isOpenStage(stage) ? [{ id, title, stage }] : []));
   return {
     id: row.id,
     company: row.company,

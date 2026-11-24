@@ -4,7 +4,7 @@
 export type AiTool = {
   name: string;
   description: string;
-  /** JSON Schema for the tool's arguments. */
+  /** JSON Schema for the tool's arguments: every property required, nullable where it may be left out. */
   parameters: Record<string, unknown>;
 };
 
@@ -19,6 +19,8 @@ export type AiRequest = {
   instructions: string;
   input: AiInputItem[];
   tools?: AiTool[];
+  /** No more tool calls: the model has to answer with what it has. */
+  mustAnswer?: boolean;
   /** Holds what one answer can cost. Counts any thinking the model does first. */
   maxOutputTokens: number;
 };

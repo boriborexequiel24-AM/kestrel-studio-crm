@@ -1,9 +1,12 @@
 "use client";
 
 import { startOver } from "@/app/actions";
+import { useAsk } from "@/components/ai/ask-context";
 import { ConfirmDialog } from "@/components/forms/form-dialog";
 
 export function StartOverButton() {
+  // The chat is about records that are about to go.
+  const { clear } = useAsk();
   return (
     <ConfirmDialog
       trigger={
@@ -13,7 +16,10 @@ export function StartOverButton() {
       }
       title="Start over?"
       description="Everything you changed goes, and you get a fresh copy of the sample data. Your Sandbox still resets at the same time."
-      action={startOver}
+      action={() => {
+        clear();
+        return startOver();
+      }}
       confirmLabel="Start over"
       pendingLabel="Starting over..."
     />

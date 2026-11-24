@@ -8,7 +8,8 @@ import { visitorWithSandbox } from "./support/visitors";
 // or delete another visitor's Sandbox data. Each attack below uses the
 // visitor's own session straight against the database API, so it proves the
 // database enforces isolation, not just the CRM module.
-// Later tickets add each new Sandbox-owned table here.
+// Later tickets add each new Sandbox-owned table here. What Ask the pipeline
+// looks up is held to the visitor's own records in ask.test.ts.
 
 type Visitor = Awaited<ReturnType<typeof visitorWithSandbox>>;
 
