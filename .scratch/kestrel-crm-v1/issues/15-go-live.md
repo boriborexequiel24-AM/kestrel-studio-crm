@@ -27,3 +27,5 @@ Found on the way: Vercel asked every visitor to sign in; `OPENAI_API_KEY` wasn't
 Found in the real AI's answers, fixed with tests but **not live until the next push**: "What renews next month?" left out a Retainer ending on the 27th (the model asked for 31 days); a Company's name was written beside its own link; a Company that doesn't exist came out as "(a record I can't find)"; "The list is complete." was said for no reason.
 
 Still open: read `cost.sql`, set `DEMO_DAILY_AI_ACTION_CAP` from it, check the fixed answers live, then make the repo public.
+
+**2026-11-24, after the push.** The December answer is right and names show once. The change made "Why are we losing Deals?" look at last month only (3 of 7 Deals), and half of a two-part question went unanswered. Now a lookup without days has no limit, and the prompt asks for every part. Tested with the fake AI; **not live or checked with the real one yet.**

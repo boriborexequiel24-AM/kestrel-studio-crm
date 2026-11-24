@@ -96,6 +96,7 @@ describe("Ask the pipeline", () => {
     expectOk(await crm.ai.ask({ today: "2026-11-24", messages: question("What renews next month?") }));
 
     expect(ai.requests[0].instructions).toContain("This month is 2026-11-01 to 2026-11-30, next month 2026-12-01 to 2026-12-31, last month 2026-10-01 to 2026-10-31.");
+    expect(ai.requests[0].instructions).toContain("unless the question names a period, from and to are null");
   });
 
   it("gives a record one short name, whichever lookup finds it", async () => {
@@ -410,6 +411,24 @@ describe("the lookups", () => {
     );
     expect(links(answer)).toEqual([{ type: "company", id: expected[0].company.id, name: expected[0].company.name }]);
     expect(answer.lookedUp).toEqual([`Retainers ending ${longDay(from)} to ${longDay(to)}`]);
+  });
+
+  it.each([
+    [{ from: null, to: null }, "Active Retainers", "Lost Deals"],
+    [{ from: utcDay(-20), to: null }, `Retainers ending from ${longDay(utcDay(-20))}`, `Deals Lost from ${longDay(utcDay(-20))}`],
+    [{ from: null, to: utcDay(20) }, `Retainers ending by ${longDay(utcDay(20))}`, `Deals Lost by ${longDay(utcDay(20))}`],
+  ])("leave out the limit a question doesn't set: %j", async (period, retainersLabel, lostLabel) => {
+    const visitor = await visitorWithSandbox();
+    const within = (day: string) => (!period.from || day >= period.from) && (!period.to || day <= period.to);
+    const active = expectOk(await visitor.crm.retainers.list(TODAY)).filter((each) => each.state !== "Ended" && within(each.endDate));
+    const lost = expectOk(await visitor.crm.pipeline.closed({ ...TODAY, owners: "everyone" })).filter(
+      (deal) => deal.stage === "Lost" && within(deal.closedOn!),
+    );
+
+    const { results, answer } = await lookUp(visitor, [call("retainers_ending", period, "1"), call("lost_deals", period, "2")]);
+
+    expect(results).toMatchObject([{ total: active.length }, { total: lost.length }]);
+    expect(answer.lookedUp).toEqual([retainersLabel, lostLabel]);
   });
 
   it("find a Company's recent Activities by its name", async () => {

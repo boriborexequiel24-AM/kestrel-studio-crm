@@ -268,7 +268,8 @@ workflow demo.
 - **Vercel Authentication leaves the production address open** (decided 2026-11-24). Otherwise every
   visitor is asked to sign in to Vercel.
 - **Ask the pipeline's lookups take exact days, and the prompt gives this, next and last month's** (decided
-  2026-11-24). With a number of days, "next month" became 31 days and missed a Retainer.
+  2026-11-24). With a number of days, "next month" became 31 days and missed a Retainer. No days means
+  no limit: told to give some, it answered "why are we losing Deals?" for last month only.
 - **A linked record's name is shown once** (decided 2026-11-24). The real model also writes it beside
   the link.
 

@@ -31,13 +31,13 @@ const MAX_OUTPUT = 30_000;
 const MAX_CALLS = 12;
 
 const EVERYONE = "everyone";
+const nullable = (type: string, values?: readonly string[]) => ({ type: [type, "null"], ...(values && { enum: [...values, null] }) });
 // Exact days: asked for "next month" as a number of days, a model counts 31 from today.
 const PERIOD = {
-  from: { type: "string", description: "First day, as YYYY-MM-DD." },
-  to: { type: "string", description: "Last day, as YYYY-MM-DD." },
+  from: { ...nullable("string"), description: "First day, as YYYY-MM-DD, or null for no limit." },
+  to: { ...nullable("string"), description: "Last day, as YYYY-MM-DD, or null for no limit." },
 };
-const BAD_PERIOD = "from and to must be days as YYYY-MM-DD, from no later than to.";
-const nullable = (type: string, values?: readonly string[]) => ({ type: [type, "null"], ...(values && { enum: [...values, null] }) });
+const BAD_PERIOD = "from and to must be days as YYYY-MM-DD, from no later than to, or null.";
 const params = (properties: Record<string, unknown>) => ({
   type: "object",
   properties,
@@ -120,12 +120,11 @@ export function createLookups({ companies, pipeline, retainers }: Areas, { team,
 
     async retainers_ending(args) {
       if (!isPeriod(args)) return problem(BAD_PERIOD);
-      const { from, to } = args;
       const read = await retainers.list({ today });
       if (!read.ok) return gone(read.error);
-      const ending = read.value.filter((each) => each.state !== "Ended" && each.endDate >= from && each.endDate <= to);
+      const ending = read.value.filter((each) => each.state !== "Ended" && isWithin(each.endDate, args));
       return {
-        label: `Retainers ending ${period(from, to)}`,
+        label: periodLabel("Retainers ending", args) ?? "Active Retainers",
         output: {
           total: ending.length,
           retainers: ending.slice(0, MAX_ROWS).map((each) => ({
@@ -179,13 +178,12 @@ export function createLookups({ companies, pipeline, retainers }: Areas, { team,
 
     async lost_deals(args) {
       if (!isPeriod(args)) return problem(BAD_PERIOD);
-      const { from, to } = args;
       const read = await pipeline.closed({ today, owners: EVERYONE });
       if (!read.ok) return gone(read.error);
-      const lost = read.value.filter((deal) => deal.stage === "Lost" && deal.closedOn && deal.closedOn >= from && deal.closedOn <= to);
+      const lost = read.value.filter((deal) => deal.stage === "Lost" && deal.closedOn && isWithin(deal.closedOn, args));
       const reasons: Record<string, number> = {};
       for (const { lostReason } of lost) if (lostReason) reasons[lostReason] = (reasons[lostReason] ?? 0) + 1;
-      return { label: `Deals Lost ${period(from, to)}`, output: { ...rows(lost), reasons } };
+      return { label: periodLabel("Deals Lost", args) ?? "Lost Deals", output: { ...rows(lost), reasons } };
     },
 
     async pipeline_totals() {
@@ -274,12 +272,23 @@ const isOneOf = <T extends string>(value: unknown, values: readonly T[]): value 
 const isBooleanOrNull = (value: unknown): value is boolean | null | undefined =>
   value === null || value === undefined || typeof value === "boolean";
 
-const isOneDay = (value: unknown): value is Day => typeof value === "string" && isDay(value);
-const isPeriod = (args: Record<string, unknown>): args is { from: Day; to: Day } =>
-  isOneDay(args.from) && isOneDay(args.to) && args.from <= args.to;
+/** A missing end means no limit. */
+type Period = { from?: Day | null; to?: Day | null };
 
-/** "Dec 1, 2026 to Dec 31, 2026". */
-const period = (from: Day, to: Day) => `${longDay(from)} to ${longDay(to)}`;
+const isDayOrNull = (value: unknown): value is Day | null | undefined =>
+  value === null || value === undefined || (typeof value === "string" && isDay(value));
+
+const isPeriod = (args: Record<string, unknown>): args is Period =>
+  isDayOrNull(args.from) && isDayOrNull(args.to) && !(args.from && args.to && args.from > args.to);
+
+const isWithin = (day: Day, { from, to }: Period) => (!from || day >= from) && (!to || day <= to);
+
+/** "Deals Lost Dec 1, 2026 to Dec 31, 2026". Null if the period has no limits. */
+function periodLabel(what: string, { from, to }: Period): string | null {
+  if (from && to) return `${what} ${longDay(from)} to ${longDay(to)}`;
+  if (from) return `${what} from ${longDay(from)}`;
+  return to ? `${what} by ${longDay(to)}` : null;
+}
 
 type DealFilter = { stage?: DealStage | null; owner?: string | null; kind?: DealKind | null; overdue?: boolean | null };
 
