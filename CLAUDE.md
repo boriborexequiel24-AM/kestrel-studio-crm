@@ -263,6 +263,9 @@ workflow demo.
 - **Live anonymous sign-ins: 300 an hour, CAPTCHA off** (decided 2026-11-24). They all come from
   Vercel's servers, which can't answer a CAPTCHA; each network is limited by this app.
 - **The live daily AI cap starts at 100** (decided 2026-11-24). Until real cost per action is measured.
+- **The live daily AI cap is 300, and OpenAI auto-reload stays off** (decided 2026-11-24). Measured: about
+  $0.0026 a question, $0.001 or less for a summary or draft, so about $0.70 for a full day. Zeki watches
+  the balance.
 - **Vercel functions run in Seoul (`icn1`), next to the database** (decided 2026-11-24). In
   Washington, the default, a page took 1.2 to 2 seconds; here 0.3 to 0.75.
 - **Vercel Authentication leaves the production address open** (decided 2026-11-24). Otherwise every
