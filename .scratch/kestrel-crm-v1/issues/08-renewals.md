@@ -22,3 +22,5 @@ Notes for later tickets:
 - Ticket 09: moving a Lost Renewal back to an open Stage while another is open for the same Retainer breaks the `deals_one_open_renewal` index. Map it to `renewal_already_open` in `moveToStage`.
 - Ticket 10 or 14: `Retainer.openRenewal` gives each Retainer's open Renewal.
 - Found in review, older than this ticket: two Start overs at the same moment can make one fail with a database error (the delete and rebuild aren't locked).
+
+**2026-11-24:** the Start over bug noted above is fixed; see ticket 04.

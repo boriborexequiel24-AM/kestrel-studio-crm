@@ -23,3 +23,5 @@ Notes for later tickets:
 - Ticket 14: `pipeline.closed` has what the Lost lookup needs (`lostReason`, `closedOn`).
 - Proposals can still be drafted and sent on a Lost Deal.
 - Still open from ticket 08's review: two Start overs at the same moment can make one fail.
+
+**2026-11-24:** the Start over bug noted above is fixed; see ticket 04.

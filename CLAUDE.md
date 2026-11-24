@@ -250,6 +250,8 @@ workflow demo.
 - **The chat lives in the app frame: it survives moving around, and goes on reload, Start over, a new
   Sandbox or Clear chat** (decided 2026-11-24). It's stored nowhere.
 - **A Deal's Sheet has its own "Ask the pipeline" button** (decided 2026-11-24). It covers the top bar.
+- **Start over locks the Sandbox but gives way to a save in progress, and retries** (decided
+  2026-11-24). A plain lock deadlocked with saves that had already locked a Deal.
 
 ## Open questions
 - A proper logo mark (the prototype's is a placeholder).

@@ -33,3 +33,4 @@ Notes for later tickets:
 - Ticket 15: the cleanup migration runs `create extension if not exists pg_cron` and schedules the job, so pg_cron must be enabled in the shared project first.
 - Anonymous users are tagged `app: kestrel-crm` at sign-in. The cleanup only deletes this app's users, since the Supabase project is shared.
 
+**2026-11-24, fixed after ticket 14.** Two Start overs at once, or one while a record was being saved, could fail with a database error. They now take turns (`20261124120000_start_over_lock.sql`). Locking the Sandbox row alone deadlocked with saves that lock a Deal first, such as a new Proposal draft, so Start over lets go and tries again after 200 ms. Three tests cover it; the Proposal one failed with a deadlock every time under the plain lock. A direct check in SQL, with a save holding a Deal, also went through.

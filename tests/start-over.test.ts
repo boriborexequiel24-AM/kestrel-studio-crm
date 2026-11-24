@@ -39,6 +39,55 @@ describe("Start over", () => {
     expect(await sandboxRowCounts(sandbox.id)).toEqual(await templateRowCounts());
   });
 
+  it("works however many times it's pressed at once", async () => {
+    const { crm, sandbox } = await visitorWithSandbox();
+    await crm.companies.create({ name: "Added Before Start Over", ownerId: await personaId(crm) });
+
+    const results = await Promise.all(Array.from({ length: 6 }, () => crm.sandbox.startOver({ today: utcDay() })));
+
+    expect(results).toEqual(results.map(() => ({ ok: true, value: undefined })));
+    expect(await sandboxRowCounts(sandbox.id)).toEqual(await templateRowCounts());
+  });
+
+  it("works while something is being saved, which is either part of the old Sandbox or the new one", async () => {
+    const { crm, sandbox } = await visitorWithSandbox();
+    const ownerId = await personaId(crm);
+    const template = await templateRowCounts();
+
+    for (let each = 0; each < 5; each++) {
+      const [startedOver, ...created] = await Promise.all([
+        crm.sandbox.startOver({ today: utcDay() }),
+        ...Array.from({ length: 4 }, (_, index) => crm.companies.create({ name: `Meanwhile ${index}`, ownerId })),
+      ]);
+
+      expect(startedOver).toEqual({ ok: true, value: undefined });
+      expect(created.every((result) => result.ok)).toBe(true);
+      const { companies, ...rest } = await sandboxRowCounts(sandbox.id);
+      expect(companies).toBeGreaterThanOrEqual(template.companies);
+      expect(companies).toBeLessThanOrEqual(template.companies + created.length);
+      expect({ ...rest, companies: template.companies }).toEqual(template);
+    }
+  });
+
+  it("and a save that has already locked a Deal never block each other", async () => {
+    const { crm, sandbox } = await visitorWithSandbox();
+    const deals = expectOk(await crm.pipeline.board({ today: utcDay(), owners: "everyone" })).deals.slice(0, 12);
+    const offer = { scopeSummary: "Meanwhile", termMonths: 12, lineItems: [{ service: "Paid search", monthlyFee: 1000 }] };
+    const template = await templateRowCounts();
+
+    for (let each = 0; each < 8; each++) {
+      const [startedOver, ...drafted] = await Promise.all([
+        crm.sandbox.startOver({ today: utcDay() }),
+        ...deals.map((deal) => crm.proposals.createDraft(deal.id, offer)),
+      ]);
+
+      expect(startedOver).toEqual({ ok: true, value: undefined });
+      for (const result of drafted) expect(result.ok || result.error).toSatisfy((was) => was === true || was === "not_found");
+      const { companies, deals: dealCount } = await sandboxRowCounts(sandbox.id);
+      expect({ companies, deals: dealCount }).toEqual({ companies: template.companies, deals: template.deals });
+    }
+  }, 60_000);
+
   it("keeps the same Sandbox and the same expiry time", async () => {
     const { crm } = await visitorWithSandbox();
     const before = await crm.sandbox.status();
