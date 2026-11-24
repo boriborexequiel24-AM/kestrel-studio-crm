@@ -3,6 +3,7 @@ import { inject } from "vitest";
 import { createCrm, type CrmSupabaseClient } from "@/lib/crm";
 import { createFakeAiProvider } from "@/lib/ai/fake";
 import type { Database } from "@/lib/database.types";
+import { utcDay } from "./days";
 
 export const TEST_LIMITS = { sandboxesPerIpPerDay: 5, ipHashSalt: "test-salt" };
 
@@ -25,10 +26,13 @@ export function newVisitor(options: { ip?: string; sandboxesPerIpPerDay?: number
   return { crm, db, ai, ip };
 }
 
-/** A visitor who has already clicked "Open the demo". */
-export async function visitorWithSandbox(options: Parameters<typeof newVisitor>[0] = {}) {
+/** A visitor who has already clicked "Open the demo". `today` is their own calendar day. */
+export async function visitorWithSandbox({
+  today = utcDay(),
+  ...options
+}: Parameters<typeof newVisitor>[0] & { today?: string } = {}) {
   const visitor = newVisitor(options);
-  const opened = await visitor.crm.sandbox.open({ ip: visitor.ip });
+  const opened = await visitor.crm.sandbox.open({ ip: visitor.ip, today });
   if (!opened.ok) throw new Error(`Could not open a Sandbox: ${opened.error}`);
   return { ...visitor, sandbox: opened.value };
 }

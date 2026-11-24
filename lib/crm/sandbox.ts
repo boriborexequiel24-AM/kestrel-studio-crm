@@ -1,6 +1,7 @@
 import "server-only";
 import { createHash } from "node:crypto";
 import { fail, ok, unexpected, type CrmDb, type CrmSupabaseClient, type InLiveSandbox, type Result } from "./core";
+import type { Day } from "./terms";
 
 export type SandboxInfo = { id: string; expiresAt: Date };
 export type SandboxStatus = { state: "none" } | { state: "expired" } | { state: "live"; sandbox: SandboxInfo };
@@ -52,14 +53,16 @@ export function sandboxArea(supabase: CrmSupabaseClient, db: CrmDb, limits: Sand
     /**
      * "Open the demo": signs in anonymously if needed and returns the visitor's
      * live Sandbox, building one unless their network has hit the daily limit.
+     * Sample due dates are set from the visitor's own `today`.
      */
-    async open(visitor: { ip: string }): Promise<Result<SandboxInfo, "sandbox_limit_reached">> {
+    async open(visitor: { ip: string; today: Day }): Promise<Result<SandboxInfo, "sandbox_limit_reached">> {
       if (!limits.ipHashSalt) throw new Error("IP_HASH_SALT is not set. See .env.example.");
       await ensureLiveUser();
 
       const args = {
         ip_hash: createHash("sha256").update(`${limits.ipHashSalt}:${visitor.ip}`).digest("hex"),
         daily_limit: limits.sandboxesPerIpPerDay,
+        today: visitor.today,
       };
       let { data, error } = await db.rpc("open_sandbox", args);
       if (error?.message === "sandbox_expired") {
@@ -74,9 +77,9 @@ export function sandboxArea(supabase: CrmSupabaseClient, db: CrmDb, limits: Sand
     },
 
     /** Replaces the Sandbox's data with a fresh copy of the Template. Same Sandbox, same expiry. */
-    startOver: () =>
+    startOver: (visitor: { today: Day }) =>
       inLiveSandbox(async () => {
-        const { error } = await db.rpc("start_over");
+        const { error } = await db.rpc("start_over", { today: visitor.today });
         if (error) unexpected(error);
         return ok(undefined);
       }),

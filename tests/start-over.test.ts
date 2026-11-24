@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { utcDay } from "./support/days";
 import { expectOk } from "./support/results";
 import { personaId, sampleCompany } from "./support/sample";
 import { newVisitor, sandboxRowCounts, templateRowCounts, visitorWithSandbox } from "./support/visitors";
@@ -18,7 +19,7 @@ describe("Start over", () => {
     await crm.companies.create({ name: "Added Before Start Over", ownerId: await personaId(crm) });
     await crm.companies.delete(harbor.id);
 
-    expect(await crm.sandbox.startOver()).toEqual({ ok: true, value: undefined });
+    expect(await crm.sandbox.startOver({ today: utcDay() })).toEqual({ ok: true, value: undefined });
 
     const names = expectOk(await crm.companies.list()).map((company) => company.name);
     expect(names).toContain("Harbor & Pine Coffee");
@@ -33,7 +34,7 @@ describe("Start over", () => {
     await crm.activities.log({ companyId: saltmarsh.id, kind: "Note", occurredAt: new Date(), text: "Extra note." });
     await crm.contacts.delete(saltmarsh.contacts[0].id);
 
-    expectOk(await crm.sandbox.startOver());
+    expectOk(await crm.sandbox.startOver({ today: utcDay() }));
 
     expect(await sandboxRowCounts(sandbox.id)).toEqual(await templateRowCounts());
   });
@@ -42,7 +43,7 @@ describe("Start over", () => {
     const { crm } = await visitorWithSandbox();
     const before = await crm.sandbox.status();
 
-    expectOk(await crm.sandbox.startOver());
+    expectOk(await crm.sandbox.startOver({ today: utcDay() }));
 
     expect(await crm.sandbox.status()).toEqual(before);
   });
@@ -52,7 +53,7 @@ describe("Start over", () => {
     const theirs = await visitorWithSandbox();
     await theirs.crm.companies.create({ name: "Theirs To Keep", ownerId: await personaId(theirs.crm) });
 
-    expectOk(await mine.crm.sandbox.startOver());
+    expectOk(await mine.crm.sandbox.startOver({ today: utcDay() }));
 
     expect(expectOk(await theirs.crm.companies.list()).map((company) => company.name)).toContain("Theirs To Keep");
   });
@@ -60,6 +61,6 @@ describe("Start over", () => {
   it("needs a live Sandbox", async () => {
     const { crm } = newVisitor();
 
-    expect(await crm.sandbox.startOver()).toEqual({ ok: false, error: "no_sandbox" });
+    expect(await crm.sandbox.startOver({ today: utcDay() })).toEqual({ ok: false, error: "no_sandbox" });
   });
 });

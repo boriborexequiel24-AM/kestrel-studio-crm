@@ -194,10 +194,10 @@ isOneToOne: false
 { Args: Record<PropertyKey, never>; Returns: string
                            },
 "fill_sandbox":
-{ Args: { "target": string }; Returns: undefined
+{ Args: { "target": string,"today": string }; Returns: undefined
                            },
 "open_sandbox":
-{ Args: { "daily_limit": number,"ip_hash": string }; Returns: {
+{ Args: { "daily_limit": number,"ip_hash": string,"today": string }; Returns: {
               "created_at": string,
 "expires_at": string | null,
 "id": string,
@@ -216,7 +216,7 @@ isOneToOne: false
             }[]
                            },
 "start_over":
-{ Args: Record<PropertyKey, never>; Returns: undefined
+{ Args: { "today": string }; Returns: undefined
                            }
           }
           Enums: {

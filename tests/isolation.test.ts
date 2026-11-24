@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import { utcDay } from "./support/days";
 import { expectOk } from "./support/results";
 import { visitorWithSandbox } from "./support/visitors";
 
@@ -100,7 +101,7 @@ describe("Sandbox isolation", () => {
   });
 
   it("can't run the Sandbox builder against any Sandbox", async () => {
-    const { error } = await mine.db.schema("crm").rpc("fill_sandbox", { target: theirs.sandbox.id });
+    const { error } = await mine.db.schema("crm").rpc("fill_sandbox", { target: theirs.sandbox.id, today: utcDay() });
 
     expect(error?.code).toBe("42501"); // permission denied
   });

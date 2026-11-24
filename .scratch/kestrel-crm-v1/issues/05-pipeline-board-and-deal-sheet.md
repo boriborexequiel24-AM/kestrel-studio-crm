@@ -32,6 +32,6 @@ Notes for later tickets:
 - Tickets 07 and 09: the Stage dropdown lists Won and Lost as disabled, with "(needs a Sent Proposal)" and "(needs a Lost reason)". `deals.moveToStage` returns `stage_not_available` for them.
 - Ticket 08: cards already prefix "Renewal:" for Renewal Deals.
 - Story 54 says the Company page shows its Deals. It doesn't yet: its Activities link to their Deal, but there is no Deals card. Worth adding with ticket 07's Retainers card.
-- Sample due dates shift by whole UTC days, so for a visitor far from UTC a sample "Due tomorrow" can read "Due today" for part of the day.
+- Fixed 2026-11-24, after this ticket: sample due dates used the UTC day, so in Manila before 8am "Due tomorrow" read "Due today" and Deals due today read as overdue. Building and Start over now take the visitor's own day.
 - The spec's ~300 Activities: the Template still has 125 (65 now linked to Deals).
 

@@ -5,8 +5,9 @@ import { useEffect } from "react";
 import { TIME_ZONE_COOKIE as COOKIE } from "@/lib/time-zone";
 
 /**
- * Tells the server the visitor's time zone, so due dates are judged by their
- * calendar. Refreshes once when the zone is first learned or has changed.
+ * Tells the server the visitor's time zone, so due dates are set and judged by
+ * their calendar. On every page, because opening the demo already needs it.
+ * Refreshes once when the zone is first learned or has changed.
  */
 export function TimeZoneSync() {
   const router = useRouter();

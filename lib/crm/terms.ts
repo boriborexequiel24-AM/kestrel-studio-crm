@@ -3,6 +3,9 @@
 export type ActivityKind = "Email" | "Call" | "Meeting" | "Note";
 export const ACTIVITY_KINDS: readonly ActivityKind[] = ["Email", "Call", "Meeting", "Note"];
 
+/** A calendar day, "2026-11-24". Due dates are days, compared with the visitor's own today. */
+export type Day = string;
+
 export type DealStage = "New" | "Qualified" | "Discovery" | "Proposal sent" | "Negotiation" | "Won" | "Lost";
 export const DEAL_STAGES: readonly DealStage[] = ["New", "Qualified", "Discovery", "Proposal sent", "Negotiation", "Won", "Lost"];
 export type OpenStage = Exclude<DealStage, "Won" | "Lost">;

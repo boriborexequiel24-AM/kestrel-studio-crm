@@ -1,15 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { Crm } from "@/lib/crm";
+import { utcDay } from "./support/days";
 import { expectOk } from "./support/results";
 import { personaId, sampleCompany } from "./support/sample";
 import { visitorWithSandbox } from "./support/visitors";
 
 const OPEN_STAGES = ["New", "Qualified", "Discovery", "Proposal sent", "Negotiation"];
-
-/** Today's calendar day in UTC, as the app passes it for a visitor in UTC. */
-function utcDay(offsetDays = 0) {
-  return new Date(Date.now() + offsetDays * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-}
 
 async function newDeal(crm: Crm, overrides: Partial<Parameters<Crm["deals"]["create"]>[0]> = {}) {
   const company = await sampleCompany(crm, "Saltmarsh");

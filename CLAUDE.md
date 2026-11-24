@@ -150,6 +150,9 @@ workflow demo.
   time** (decided 2026-11-24). A visitor returning the next day has no valid sign-in left to check.
 - **Next step due dates are calendar days, judged by the visitor's own time zone** (decided
   2026-11-24). The browser sets a `tz` cookie; "Overdue" and "Due today" follow Maya's calendar.
+- **Sample due dates are set from the visitor's own today, when a Sandbox is built or started
+  over** (decided 2026-11-24). Their day can be one ahead of or behind UTC; the database holds the
+  claimed day to within one. The `tz` cookie is set on every page, so the landing page has it.
 - **A Deal's link is `/deals/[id]`, which renders the Pipeline with the Deal open in a Sheet**
   (decided 2026-11-24). Back, close and shared links all work without parallel routes.
 - **Every `crm` function revokes PUBLIC execute itself** (decided 2026-11-24). Postgres grants it

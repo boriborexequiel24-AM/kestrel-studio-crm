@@ -19,7 +19,7 @@ export type { SandboxInfo, SandboxLimits, SandboxStatus } from "./sandbox";
 export type { Owner } from "./team";
 export type { Activity } from "./activities";
 export type { Contact } from "./contacts";
-export type { Day, DealCard, DealDetail, DealInput, NextStep, PipelineBoard } from "./deals";
+export type { DealCard, DealDetail, DealInput, NextStep, PipelineBoard } from "./deals";
 export type {
   CompanyDetail,
   CompanyFilter,
@@ -34,6 +34,7 @@ export {
   isOpenStage,
   type ActivityKind,
   type CompanyStatus,
+  type Day,
   type DealKind,
   type DealStage,
   type OpenStage,

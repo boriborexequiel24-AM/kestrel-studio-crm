@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { utcDay } from "./support/days";
 import { expectOk } from "./support/results";
 import { expireSandbox, operator, sandboxRowCounts, templateRowCounts, visitorWithSandbox } from "./support/visitors";
 
@@ -46,7 +47,7 @@ describe("the hourly cleanup", () => {
     await cleanUp();
 
     expect(await crm.sandbox.status()).toEqual({ state: "none" });
-    const reopened = expectOk(await crm.sandbox.open({ ip }));
+    const reopened = expectOk(await crm.sandbox.open({ ip, today: utcDay() }));
     expect(reopened.id).not.toBe(sandbox.id);
   });
 

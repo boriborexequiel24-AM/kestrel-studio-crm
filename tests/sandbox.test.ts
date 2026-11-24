@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { HOUR, expireSandbox, newVisitor, operator, visitorWithSandbox } from "./support/visitors";
+import { utcDay } from "./support/days";
 
 describe("opening the demo", () => {
   it("gives a new visitor a live Sandbox that lasts 24 hours", async () => {
     const { crm, ip } = newVisitor();
 
-    const opened = await crm.sandbox.open({ ip });
+    const opened = await crm.sandbox.open({ ip, today: utcDay() });
 
     expect(opened.ok).toBe(true);
     const status = await crm.sandbox.status();
@@ -19,7 +20,7 @@ describe("opening the demo", () => {
   it("gives a returning visitor the same Sandbox, not a new one", async () => {
     const { crm, sandbox, ip } = await visitorWithSandbox();
 
-    const again = await crm.sandbox.open({ ip });
+    const again = await crm.sandbox.open({ ip, today: utcDay() });
 
     expect(again).toEqual({ ok: true, value: sandbox });
   });
@@ -28,7 +29,7 @@ describe("opening the demo", () => {
     const { crm, db, ip } = newVisitor();
     await db.auth.signInAnonymously();
 
-    const [first, second] = await Promise.all([crm.sandbox.open({ ip }), crm.sandbox.open({ ip })]);
+    const [first, second] = await Promise.all([crm.sandbox.open({ ip, today: utcDay() }), crm.sandbox.open({ ip, today: utcDay() })]);
 
     expect(first).toEqual(second);
   });
@@ -67,7 +68,7 @@ describe("without a live Sandbox", () => {
     const { crm, sandbox, ip } = await visitorWithSandbox();
     await expireSandbox(sandbox.id);
 
-    const reopened = await crm.sandbox.open({ ip });
+    const reopened = await crm.sandbox.open({ ip, today: utcDay() });
 
     expect(reopened.ok).toBe(true);
     if (!reopened.ok) return;
@@ -82,7 +83,7 @@ describe("without a live Sandbox", () => {
     const { data } = await db.auth.getUser();
     await operator().auth.admin.deleteUser(data.user!.id);
 
-    const reopened = await crm.sandbox.open({ ip });
+    const reopened = await crm.sandbox.open({ ip, today: utcDay() });
 
     expect(reopened.ok).toBe(true);
     if (!reopened.ok) return;

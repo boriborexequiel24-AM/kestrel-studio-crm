@@ -16,10 +16,7 @@ import {
 } from "./core";
 import { listTeam, type Owner } from "./team";
 import type { PostgrestError } from "@supabase/supabase-js";
-import { DEAL_STAGES, OPEN_STAGES, isOpenStage, type CompanyStatus, type DealKind, type DealStage, type OpenStage } from "./terms";
-
-/** A calendar day, "2026-11-24". Due dates are days, compared with the visitor's own today. */
-export type Day = string;
+import { DEAL_STAGES, OPEN_STAGES, isOpenStage, type CompanyStatus, type Day, type DealKind, type DealStage, type OpenStage } from "./terms";
 
 export type NextStep = { text: string; due: Day | null; overdue: boolean };
 
