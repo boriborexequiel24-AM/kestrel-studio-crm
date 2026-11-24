@@ -26,4 +26,4 @@ Notes for later tickets:
 - Ticket 08: `crm.win_deal` ignores the Deal's kind and always starts a Retainer; a Renewal should extend one instead. The 5 Retainers ending soon come from Deals 104, 105, 106, 110 and 111. `retainers.deal_id` is unique per Deal. A link from Deals to Retainers may make the embeds in `RETAINER_COLUMNS` and `COMPANY_COLUMNS` ambiguous, so name the foreign key.
 - Ticket 09: `closed_on` is ready for Lost (a check ties it to Won and Lost). A visitor calling the API directly can still set Lost without a reason; guard it there.
 - A Won Deal's Owner can still be edited; its Retainer keeps the Owner it was won with.
-- Some sample Activities name real dates or seasons ("the October performance report", "Nov 18", "before Thanksgiving"), which won't read as current all year (spec story 11). Not changed here.
+- Sample text that named real dates or seasons was rewritten afterwards; `tests/sample-text.test.ts` keeps it timeless.

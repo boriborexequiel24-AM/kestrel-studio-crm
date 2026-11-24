@@ -178,6 +178,8 @@ workflow demo.
 - **A Proposal's monthly total is capped at $10 million too** (decided 2026-11-24). It becomes the
   Retainer's fee.
 - **A Retainer keeps the Owner it was won with** (decided 2026-11-24). Only its end date can change.
+- **Sample text never names a month, quarter, holiday or year** (decided 2026-11-24). Dates shift with
+  the Sandbox but words don't; `tests/sample-text.test.ts` enforces it.
 
 ## Open questions
 - A proper logo mark (the prototype's is a placeholder).

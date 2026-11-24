@@ -12,9 +12,9 @@ const VISITOR_DAYS = [
   ["a day behind UTC", -1],
 ] as const;
 
-async function springLaunch(crm: Crm, today: string) {
+async function productLaunch(crm: Crm, today: string) {
   const board = expectOk(await crm.pipeline.board({ today, owners: "everyone" }));
-  return { board, deal: board.deals.find((deal) => deal.title === "Spring launch campaign")! };
+  return { board, deal: board.deals.find((deal) => deal.title === "Product launch campaign")! };
 }
 
 describe("sample due dates follow the visitor's own calendar", () => {
@@ -22,7 +22,7 @@ describe("sample due dates follow the visitor's own calendar", () => {
     const today = utcDay(offset);
     const { crm } = await visitorWithSandbox({ today });
 
-    const { board, deal } = await springLaunch(crm, today);
+    const { board, deal } = await productLaunch(crm, today);
 
     // The Template makes this Deal due tomorrow, and 7 Next steps overdue.
     expect(deal.nextStep?.due).toBe(utcDay(offset + 1));
@@ -35,7 +35,7 @@ describe("sample due dates follow the visitor's own calendar", () => {
 
     expectOk(await crm.sandbox.startOver({ today }));
 
-    const { board, deal } = await springLaunch(crm, today);
+    const { board, deal } = await productLaunch(crm, today);
     expect(deal.nextStep?.due).toBe(utcDay(offset + 1));
     expect(board.kpis.overdueNextSteps).toBe(7);
   });
@@ -44,7 +44,7 @@ describe("sample due dates follow the visitor's own calendar", () => {
     const early = await visitorWithSandbox({ today: "1999-01-01" });
     const late = await visitorWithSandbox({ today: "2999-01-01" });
 
-    expect((await springLaunch(early.crm, utcDay())).deal.nextStep?.due).toBe(utcDay(0));
-    expect((await springLaunch(late.crm, utcDay())).deal.nextStep?.due).toBe(utcDay(2));
+    expect((await productLaunch(early.crm, utcDay())).deal.nextStep?.due).toBe(utcDay(0));
+    expect((await productLaunch(late.crm, utcDay())).deal.nextStep?.due).toBe(utcDay(2));
   });
 });
