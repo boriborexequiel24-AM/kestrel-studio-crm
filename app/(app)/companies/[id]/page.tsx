@@ -70,9 +70,9 @@ async function CompanyView({ params }: { params: Promise<{ id: string }> }) {
         </div>
       </div>
 
-      <div className="mt-6 grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_380px]">
+      <div className="mt-6 grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1fr)_380px]">
         <Timeline company={company} />
-        <div className="grid gap-5">
+        <div className="grid grid-cols-1 gap-5">
           <Retainers company={company} owners={owners} />
           <Deals company={company} />
           <Contacts company={company} />
@@ -99,7 +99,7 @@ function Timeline({ company }: { company: CompanyDetail }) {
           {company.activities.map((activity) => {
             const Icon = ACTIVITY_KIND_ICON[activity.kind];
             return (
-              <li key={activity.id} className="flex gap-3 px-5 py-4">
+              <li key={activity.id} className="flex flex-wrap gap-x-3 px-5 py-4 sm:flex-nowrap">
                 <span className="mt-0.5 grid size-9 shrink-0 place-items-center rounded-full bg-tint text-primary" aria-hidden>
                   <Icon className="size-4" />
                 </span>
@@ -112,7 +112,10 @@ function Timeline({ company }: { company: CompanyDetail }) {
                     {activity.deal && (
                       <>
                         {" about "}
-                        <Link href={`/deals/${activity.deal.id}`} className="font-semibold text-primary hover:underline">
+                        <Link
+                          href={`/deals/${activity.deal.id}`}
+                          className="relative inline-block font-semibold text-primary after:absolute after:inset-x-0 after:-top-6 after:-bottom-1 hover:underline"
+                        >
                           {activity.deal.title}
                         </Link>
                       </>
@@ -122,16 +125,18 @@ function Timeline({ company }: { company: CompanyDetail }) {
                   </p>
                   <p className="mt-1 whitespace-pre-line">{activity.text}</p>
                 </div>
-                <ActivityActions
-                  contacts={contacts}
-                  activity={{
-                    id: activity.id,
-                    kind: activity.kind,
-                    occurredAt: activity.occurredAt.toISOString(),
-                    contactId: activity.contact?.id ?? null,
-                    text: activity.text,
-                  }}
-                />
+                <div className="flex basis-full justify-end sm:basis-auto">
+                  <ActivityActions
+                    contacts={contacts}
+                    activity={{
+                      id: activity.id,
+                      kind: activity.kind,
+                      occurredAt: activity.occurredAt.toISOString(),
+                      contactId: activity.contact?.id ?? null,
+                      text: activity.text,
+                    }}
+                  />
+                </div>
               </li>
             );
           })}

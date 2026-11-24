@@ -9,7 +9,7 @@ export function TopBar() {
   return (
     <header className="sticky top-0 z-30 border-b border-border bg-card">
       <div className="mx-auto flex h-16 max-w-[1440px] items-center gap-6 px-4 md:px-6">
-        <Link href="/home" aria-label="Kestrel Studio, Home" className="rounded-lg">
+        <Link href="/home" aria-label="Kestrel Studio, Home" className="flex min-h-11 items-center rounded-lg">
           <Logo />
         </Link>
         <MainNav className="hidden md:block" />
@@ -19,11 +19,10 @@ export function TopBar() {
             type="button"
             disabled
             title="Coming soon"
-            className="flex h-11 items-center gap-2 rounded-lg border border-border px-3 text-[14px] font-semibold text-muted-foreground disabled:cursor-not-allowed"
+            className="flex h-11 min-w-11 items-center justify-center gap-2 rounded-lg border border-border px-3 text-[14px] font-semibold text-muted-foreground disabled:cursor-not-allowed"
           >
             <Search className="size-4" aria-hidden />
-            <span className="hidden sm:inline">Ask the pipeline</span>
-            <span className="sr-only sm:hidden">Ask the pipeline</span>
+            <span className="sr-only sm:not-sr-only sm:whitespace-nowrap md:sr-only lg:not-sr-only">Ask the pipeline</span>
           </button>
           <Suspense fallback={<PersonaBadgeShell />}>
             <PersonaBadge />

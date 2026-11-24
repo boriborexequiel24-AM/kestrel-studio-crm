@@ -3,8 +3,9 @@
 import { useId, type ComponentProps, type ReactNode } from "react";
 import { useFormReport } from "./form-dialog";
 
+// 16px on phones: iOS zooms the page in on a smaller field.
 export const INPUT_CLASS =
-  "h-11 w-full rounded-lg border border-input bg-card px-3 text-[14px] transition-colors duration-150 placeholder:text-muted-foreground hover:border-muted-foreground aria-invalid:border-destructive";
+  "h-11 w-full rounded-lg border border-input bg-card px-3 text-[16px] sm:text-[14px] transition-colors duration-150 placeholder:text-muted-foreground hover:border-muted-foreground aria-invalid:border-destructive";
 
 /** Whether the form's last report blamed this field, and what was typed into it. */
 function useFieldReport(name: string) {

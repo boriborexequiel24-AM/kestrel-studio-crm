@@ -53,7 +53,7 @@ export default function LandingPage({ searchParams }: PageProps<"/">) {
       <footer className="mt-16 text-[13px] text-muted-foreground">
         <a
           href="https://workwithbori.cloud"
-          className="font-semibold text-primary underline-offset-4 transition-colors duration-150 hover:text-primary-hover hover:underline"
+          className="inline-flex min-h-11 items-center font-semibold text-primary underline-offset-4 transition-colors duration-150 hover:text-primary-hover hover:underline"
         >
           Built by Zeki
         </a>

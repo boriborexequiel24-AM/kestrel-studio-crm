@@ -145,7 +145,7 @@ export function StageSelect({ deal }: { deal: StagedDeal }) {
             key={deal.stage}
             disabled={pending}
             onChange={(event) => pick(event.target)}
-            className="h-11 rounded-lg border border-input bg-card px-3 text-[14px] font-semibold transition-colors duration-150 hover:border-muted-foreground"
+            className="h-11 max-w-44 rounded-lg border border-input bg-card px-3 text-[16px] font-semibold transition-colors duration-150 hover:border-muted-foreground sm:max-w-none sm:text-[14px]"
           >
             {OPEN_STAGES.map((open) => (
               <option key={open} value={open}>

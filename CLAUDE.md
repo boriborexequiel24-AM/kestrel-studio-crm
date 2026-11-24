@@ -201,6 +201,14 @@ workflow demo.
   survives opening a Deal and coming back.
 - **Sample Activities that explain a loss sit two days before it** (decided 2026-11-24). Moments shift
   by the hour and days by the day, so the same day could end up in the wrong order.
+- **The phone Pipeline starts below 1120px (`desk` breakpoint), and Sheets are full width there**
+  (decided 2026-11-24, refines the ~1060px entry). The grid needs 1040px plus gutters and a scrollbar.
+- **The grid and the Stage list are both rendered and CSS shows one; the picked Stage lives in the
+  link** (decided 2026-11-24). No flash on load, and opening a Deal and closing it keeps your place.
+- **On phones a one-line bar with the Deal's title sticks instead of the full Sheet header** (decided
+  2026-11-24). The header would fill a third of the screen. It sticks from 640px up.
+- **Form fields are 16px text on phones, 14px above** (decided 2026-11-24). iOS zooms the page in on
+  anything smaller.
 
 ## Open questions
 - A proper logo mark (the prototype's is a placeholder).

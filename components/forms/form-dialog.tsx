@@ -93,7 +93,7 @@ export function FormDialog({ trigger, opened, title, description, ...form }: For
     <Dialog open={open} onOpenChange={setOpen}>
       {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg" onCloseAutoFocus={returnFocus}>
-        <DialogHeader>
+        <DialogHeader className="px-8 sm:px-0 sm:pr-8">
           <DialogTitle className="text-[20px] font-bold">{title}</DialogTitle>
           {description && <DialogDescription className="text-[14px]">{description}</DialogDescription>}
         </DialogHeader>
@@ -114,7 +114,7 @@ function DialogForm({
   const [state, formAction, pending] = useDialogAction(action, onSaved);
   return (
     <FormStateContext value={state}>
-      <form action={formAction} className="grid gap-4">
+      <form action={formAction} className="grid grid-cols-1 gap-4">
         <HiddenFields fields={hidden} />
         {children}
         <FormError state={state} />
@@ -177,7 +177,7 @@ function ConfirmForm({
 }: Pick<ConfirmDialogProps, "action" | "confirmLabel" | "pendingLabel" | "hidden" | "tone"> & { onDone: () => void }) {
   const [state, formAction, pending] = useDialogAction(action, onDone);
   return (
-    <form action={formAction} className="grid gap-4">
+    <form action={formAction} className="grid grid-cols-1 gap-4">
       <HiddenFields fields={hidden} />
       <FormError state={state} />
       <AlertDialogFooter className="gap-2">

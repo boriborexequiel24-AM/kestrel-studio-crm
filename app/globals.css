@@ -34,6 +34,10 @@
   --color-won: var(--won);
   --color-won-hover: var(--won-hover);
   --color-warning: var(--warning);
+
+  /* From this width up, the Owner x Stage grid fits and Sheets open beside it. */
+  --breakpoint-desk: 70rem;
+
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -104,11 +108,17 @@
     @apply border-border;
   }
   html {
-    /* Focus never hides under the 64px sticky top bar. */
-    scroll-padding-top: 80px;
+    /* Focus never hides under the sticky top bar: two rows tall on phones, then 64px. */
+    scroll-padding-top: 125px;
+  }
+  @media (width >= 48rem) {
+    html {
+      scroll-padding-top: 80px;
+    }
   }
   body {
-    @apply bg-background font-sans text-[14px] text-foreground;
+    /* A long link someone types wraps instead of widening the page. */
+    @apply bg-background font-sans text-[14px] wrap-break-word text-foreground;
   }
   :focus-visible {
     outline: 2px solid var(--ring);

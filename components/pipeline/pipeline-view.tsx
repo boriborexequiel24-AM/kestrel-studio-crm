@@ -9,17 +9,19 @@ import { LogActivityButton } from "@/components/companies/activity-forms";
 import { ownerOptions } from "@/components/companies/owner-options";
 import { RetainerStateChip } from "@/components/retainers/retainer-state";
 import { SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { OPEN_STAGES, isOpenStage, type Crm, type DealCard, type DealDetail, type DealStage, type LostReason, type PipelineBoard, type Retainer } from "@/lib/crm";
+import { OPEN_STAGES, isOpenStage, type Crm, type DealDetail, type DealStage, type LostReason, type PipelineBoard, type Retainer } from "@/lib/crm";
 import { requireLiveSandbox, valueOrLanding, landingFor } from "@/lib/crm/server";
-import { dueLabel, fullName, longDay, usd, usdShort } from "@/lib/format";
+import { dueLabel, fullName, longDay, usd } from "@/lib/format";
 import { visitorToday } from "@/lib/visitor-day";
 import { ClosedTable } from "./closed-table";
+import { DealCardView, stagedDeal } from "./deal-card";
 import { DealSheetFrame } from "./deal-sheet-frame";
-import { choiceQuery, readChoice, type PipelineChoice } from "./pipeline-choice";
+import { choiceQuery, openStageOf, readChoice, type PipelineChoice } from "./pipeline-choice";
 import { ProposalCard } from "./proposal-card";
 import { DeleteDealButton, EditDealButton, NewDealButton, NextStepButton, type DealFormOptions } from "./deal-forms";
 import { STAGE_COLOR } from "./stage";
-import { MoveToMenu, StageSelect, type StagedDeal } from "./stage-controls";
+import { StageSelect } from "./stage-controls";
+import { StageList } from "./stage-list";
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
@@ -47,11 +49,6 @@ export function PipelineView({ searchParams, openDealId }: { searchParams: Searc
 async function choiceFrom(searchParams: SearchParams): Promise<PipelineChoice> {
   const params = await searchParams;
   return readChoice((name) => params[name]);
-}
-
-/** Only what the Stage controls need goes to the browser, not the whole Deal. */
-function stagedDeal({ id, title, kind, stage, monthlyValue, proposal }: DealCard): StagedDeal {
-  return { id, title, kind, stage, monthlyValue, proposal };
 }
 
 /** The Companies and Owners a Deal form can pick from. */
@@ -110,7 +107,7 @@ function Switch({ label, options }: { label: string; options: { label: string; h
   );
 }
 
-/** The KPI strip, then the grid of open Deals or the table of closed ones. */
+/** The KPI strip, then open Deals (a grid, or one Stage at a time where that does not fit) or the table of closed ones. */
 async function Deals({ searchParams, openDealId }: { searchParams: SearchParams; openDealId?: string }) {
   const choice = await choiceFrom(searchParams);
   const [{ crm }, today] = await Promise.all([requireLiveSandbox(), visitorToday()]);
@@ -122,7 +119,14 @@ async function Deals({ searchParams, openDealId }: { searchParams: SearchParams;
       {closed ? (
         <ClosedTable deals={valueOrLanding(closed)} choice={choice} openDealId={openDealId} />
       ) : (
-        <Grid board={valueOrLanding(board)} today={today} choice={choice} openDealId={openDealId} />
+        <>
+          <div className="hidden desk:block">
+            <Grid board={valueOrLanding(board)} today={today} choice={choice} openDealId={openDealId} />
+          </div>
+          <div className="desk:hidden">
+            <StageList board={valueOrLanding(board)} today={today} choice={choice} openDealId={openDealId} />
+          </div>
+        </>
       )}
     </>
   );
@@ -132,7 +136,7 @@ function Grid({ board, today, choice, openDealId }: { board: PipelineBoard; toda
   return (
     <>
       <div className="mt-5 overflow-x-auto rounded-xl border border-border bg-card">
-        <table className="w-full min-w-[1060px] table-fixed border-collapse text-left">
+        <table className="w-full min-w-[1040px] table-fixed border-collapse text-left">
           <caption className="sr-only">Open Deals by Owner and Stage</caption>
           <thead>
             <tr className="border-b border-border">
@@ -177,7 +181,7 @@ function Grid({ board, today, choice, openDealId }: { board: PipelineBoard; toda
                         .filter((deal) => deal.owner.id === owner.id && deal.stage === stage)
                         .map((deal) => (
                           <li key={deal.id}>
-                            <DealCardView deal={deal} today={today} choice={choice} selected={deal.id === openDealId} />
+                            <DealCardView deal={deal} today={today} choice={{ ...choice, stage: null }} selected={deal.id === openDealId} />
                           </li>
                         ))}
                     </ul>
@@ -199,7 +203,7 @@ function KpiStrip({ board }: { board: PipelineBoard }) {
   const { openMonthlyValue, openDeals, proposalsOut, wonThisMonth, overdueNextSteps } = board.kpis;
   const deals = (count: number) => (count === 1 ? "Deal" : "Deals");
   return (
-    <dl className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+    <dl className="mt-5 grid grid-cols-1 gap-3 min-[360px]:grid-cols-2 xl:grid-cols-4">
       <Kpi label="Open pipeline" value={usd(openMonthlyValue)} detail={`${openDeals} open ${deals(openDeals)}, a month`} bar="bg-primary" />
       <Kpi
         label="Proposals out"
@@ -226,53 +230,12 @@ function KpiStrip({ board }: { board: PipelineBoard }) {
 
 function Kpi({ label, value, detail, bar, alert = false }: { label: string; value: string; detail: string; bar: string; alert?: boolean }) {
   return (
-    <div className={`rounded-xl border bg-card p-4 ${alert ? "border-destructive/40" : "border-border"}`}>
+    <div className={`min-w-0 rounded-xl border bg-card p-3 sm:p-4 ${alert ? "border-destructive/40" : "border-border"}`}>
       <dt className="flex items-center gap-2 text-[13px] font-semibold text-muted-foreground">
         <span className={`h-3 w-1 rounded-full ${bar}`} aria-hidden /> {label}
       </dt>
-      <dd className={`mt-1 text-[26px] font-bold tabular-nums ${alert ? "text-destructive" : ""}`}>{value}</dd>
+      <dd className={`mt-1 text-[26px] leading-tight font-bold wrap-anywhere tabular-nums ${alert ? "text-destructive" : ""}`}>{value}</dd>
       <dd className={`text-[12px] ${alert ? "font-semibold text-destructive" : "text-muted-foreground"}`}>{detail}</dd>
-    </div>
-  );
-}
-
-function DealCardView({ deal, today, choice, selected }: { deal: DealCard; today: string; choice: PipelineChoice; selected: boolean }) {
-  const overdue = deal.nextStep?.overdue;
-  return (
-    <div
-      className={`relative rounded-lg border transition-colors duration-150 ${
-        selected ? "border-primary bg-tint" : "border-border bg-card hover:border-primary/60 hover:bg-tint-faint"
-      }`}
-    >
-      <Link
-        href={`/deals/${deal.id}${choiceQuery(choice)}`}
-        scroll={false}
-        aria-current={selected ? "true" : undefined}
-        className="block min-h-11 rounded-lg p-2.5 pr-9"
-      >
-        <span className="flex items-baseline justify-between gap-2">
-          <span className="truncate text-[14px] font-semibold">{deal.company.name}</span>
-          <span className="shrink-0 text-[13px] font-bold tabular-nums">{usdShort(deal.monthlyValue)}</span>
-        </span>
-        <span className="block truncate text-[12px] text-muted-foreground">
-          {deal.kind === "Renewal" && "Renewal · "}
-          {deal.title}
-        </span>
-        {deal.nextStep ? (
-          <>
-            <span className="mt-1.5 block truncate text-[12px]">{deal.nextStep.text}</span>
-            <span className={`mt-0.5 flex items-center gap-1 text-[12px] font-semibold ${overdue ? "text-destructive" : "text-muted-foreground"}`}>
-              <CalendarClock className="size-3.5 shrink-0" aria-hidden />
-              <span className="truncate">{dueLabel(deal.nextStep.due, today)}</span>
-            </span>
-          </>
-        ) : (
-          <span className="mt-1.5 block text-[12px] font-semibold text-muted-foreground">No Next step</span>
-        )}
-      </Link>
-      <div className="absolute top-1.5 right-1.5">
-        <MoveToMenu deal={stagedDeal(deal)} />
-      </div>
     </div>
   );
 }
@@ -283,12 +246,14 @@ async function DealSheet({ id, searchParams }: { id: string; searchParams: Searc
   const [found, options] = await Promise.all([crm.deals.get(id, { today }), dealFormOptions(crm)]);
   if (!found.ok) return found.error === "not_found" ? notFound() : redirect(landingFor(found.error));
   const deal = found.value;
+  // On a narrow screen, leaving a Deal goes back to its Stage.
+  const backTo = { ...choice, stage: choice.stage ?? openStageOf(deal) };
 
   return (
-    <DealSheetFrame closeHref={`/pipeline${choiceQuery(choice)}`}>
-      <SheetHeader className="sticky top-0 z-10 gap-2 border-b border-border bg-card p-5 pr-14">
+    <DealSheetFrame closeHref={`/pipeline${choiceQuery(backTo)}`} title={deal.title}>
+      <SheetHeader className="z-10 gap-2 border-b border-border bg-card p-4 sm:sticky sm:top-0 sm:p-5 sm:pr-14">
         <p className="flex flex-wrap items-center gap-x-2 text-[13px] text-muted-foreground">
-          <Link href={`/companies/${deal.company.id}`} className="font-semibold text-foreground hover:text-primary hover:underline">
+          <Link href={`/companies/${deal.company.id}`} className="relative font-semibold text-foreground after:absolute after:inset-x-0 after:-inset-y-3.5 hover:text-primary hover:underline">
             {deal.company.name}
           </Link>
           <span aria-hidden>·</span> {deal.company.status} <span aria-hidden>·</span> {deal.kind}
@@ -320,16 +285,16 @@ async function DealSheet({ id, searchParams }: { id: string; searchParams: Searc
             }}
             options={options}
           />
-          {deal.stage !== "Won" && <DeleteDealButton deal={{ id: deal.id, title: deal.title }} choice={choice} />}
+          {deal.stage !== "Won" && <DeleteDealButton deal={{ id: deal.id, title: deal.title }} choice={backTo} />}
         </div>
       </SheetHeader>
 
-      <div className="space-y-5 p-5">
+      <div className="space-y-5 p-4 sm:p-5">
         <StageStepper stage={deal.stage} />
         {deal.lostReason && <LostBanner reason={deal.lostReason} on={deal.closedOn} />}
         {deal.retainer && <RetainerCard deal={deal} retainer={deal.retainer} />}
         {(deal.nextStep || isOpenStage(deal.stage)) && <NextStepCard deal={deal} today={today} />}
-        <div className="grid items-start gap-5 sm:grid-cols-2">
+        <div className="grid grid-cols-1 items-start gap-5 sm:grid-cols-2">
           <ProposalCard deal={deal} />
           <PeopleCard deal={deal} />
         </div>
@@ -344,21 +309,33 @@ function StageStepper({ stage: reached }: { stage: DealStage }) {
   // A Won Deal is past every open Stage. A Lost one doesn't keep how far it got.
   const current = isOpenStage(reached) ? OPEN_STAGES.indexOf(reached) : reached === "Won" ? OPEN_STAGES.length : -1;
   return (
-    <ol className="grid grid-cols-5 gap-1.5" aria-label="Stage progress">
-      {OPEN_STAGES.map((stage, index) => {
-        const done = index < current;
-        const isCurrent = index === current;
-        return (
-          <li key={stage} aria-current={isCurrent ? "step" : undefined}>
-            <div className="h-1.5 rounded-full" style={{ background: done || isCurrent ? STAGE_COLOR[stage] : "var(--border)" }} />
-            <div className={`mt-1.5 flex items-center gap-1 text-[12px] ${isCurrent ? "font-bold" : done ? "font-medium" : "text-muted-foreground"}`}>
-              {done && <Check className="size-3.5 shrink-0 text-won" aria-label="done" />}
-              {stage}
-            </div>
-          </li>
-        );
-      })}
-    </ol>
+    <div>
+      <ol className="grid grid-cols-5 gap-1.5" aria-label="Stage progress">
+        {OPEN_STAGES.map((stage, index) => {
+          const done = index < current;
+          const isCurrent = index === current;
+          return (
+            <li key={stage} aria-current={isCurrent ? "step" : undefined}>
+              <div className="h-1.5 rounded-full" style={{ background: done || isCurrent ? STAGE_COLOR[stage] : "var(--border)" }} />
+              <div className={`sr-only mt-1.5 items-center gap-1 text-[12px] sm:not-sr-only sm:mt-1.5 sm:flex ${isCurrent ? "font-bold" : done ? "font-medium" : "text-muted-foreground"}`}>
+                {done && <Check className="size-3.5 shrink-0 text-won" aria-label="done" />}
+                {stage}
+              </div>
+            </li>
+          );
+        })}
+      </ol>
+      {/* Five names don't fit under the bars on a phone, so they go in a line. A Lost Deal has none done. */}
+      <p className="mt-1.5 text-[12px] sm:hidden" aria-hidden>
+        {isOpenStage(reached) && (
+          <b>
+            {reached}, Stage {current + 1} of {OPEN_STAGES.length}.{" "}
+          </b>
+        )}
+        {current > 0 && <span className="text-muted-foreground">Done: {OPEN_STAGES.slice(0, current).join(", ")}.</span>}
+        {current < 0 && <span className="text-muted-foreground">No Stages marked done.</span>}
+      </p>
+    </div>
   );
 }
 
@@ -434,7 +411,7 @@ function PeopleCard({ deal }: { deal: DealDetail }) {
         <Users className="size-4" aria-hidden /> People
       </h3>
       {deal.contacts.length ? (
-        <ul className="mt-2 grid gap-2.5">
+        <ul className="mt-2 grid grid-cols-1 gap-2.5">
           {deal.contacts.map((contact) => (
             <li key={contact.id} className="text-[14px] leading-tight">
               <b>{contact.name}</b>

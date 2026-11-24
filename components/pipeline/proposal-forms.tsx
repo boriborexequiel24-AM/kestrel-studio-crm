@@ -134,13 +134,19 @@ function LineItemsField({ initial }: { initial?: LineItem[] }) {
   return (
     <fieldset className="grid gap-2">
       <legend className="mb-1.5 text-[13px] font-semibold">Line items</legend>
-      <div className="flex gap-2 text-[12px] text-muted-foreground" aria-hidden>
+      <div className="hidden gap-2 text-[12px] text-muted-foreground sm:flex" aria-hidden>
         <span className="flex-1">Service</span>
         <span className="w-28">Monthly fee, USD</span>
         <span className="w-11" />
       </div>
       {rows.map((row, index) => (
-        <div key={row.key} className="flex items-center gap-2">
+        <div
+          key={row.key}
+          className="flex flex-wrap items-center gap-2 border-b border-border pb-2 sm:flex-nowrap sm:border-0 sm:pb-0"
+        >
+          <span className="w-full text-[12px] text-muted-foreground sm:hidden" aria-hidden>
+            Service, then monthly fee in USD
+          </span>
           <input
             name="service"
             aria-label={`Service ${index + 1}`}
@@ -149,7 +155,7 @@ function LineItemsField({ initial }: { initial?: LineItem[] }) {
             value={row.service}
             onChange={(event) => change(row.key, { service: event.target.value })}
             placeholder="Paid social"
-            className={`${INPUT_CLASS} min-w-0 flex-1`}
+            className={`${INPUT_CLASS} min-w-0 sm:flex-1`}
           />
           <input
             name="monthlyFee"
@@ -164,7 +170,7 @@ function LineItemsField({ initial }: { initial?: LineItem[] }) {
             value={row.fee}
             onChange={(event) => change(row.key, { fee: event.target.value })}
             placeholder="4200"
-            className={`${INPUT_CLASS} w-28! shrink-0`}
+            className={`${INPUT_CLASS} min-w-0 flex-1 sm:w-28! sm:flex-none`}
           />
           <Button
             type="button"

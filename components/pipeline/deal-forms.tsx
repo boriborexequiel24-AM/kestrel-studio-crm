@@ -43,7 +43,7 @@ function DealFields({ options, deal }: { options: DealFormOptions; deal?: DealSt
     <>
       <TextField label="Title" name="title" defaultValue={deal?.title} required autoComplete="off" placeholder="Product launch campaign" />
       {deal?.companyFixedBy ? (
-        <div className="grid gap-1.5">
+        <div className="grid grid-cols-1 gap-1.5">
           <p className="text-[13px] font-semibold">Company</p>
           <p className="text-[14px]">
             {companies.find((company) => company.value === deal.companyId)?.label}
@@ -93,7 +93,7 @@ export function NewDealButton({ options, mine }: { options: DealFormOptions; min
       description="New business, starting in New. Its Monthly value is an estimate until a Proposal is sent. To renew a Retainer, start from Retainers or the Company."
       action={createDeal}
       submitLabel="Add Deal"
-      hidden={choiceFields({ mine, closed: false })}
+      hidden={choiceFields({ mine, closed: false, stage: null })}
     >
       <DealFields options={options} />
     </FormDialog>
