@@ -156,6 +156,7 @@ describe("a Retainer's end date", () => {
     const { retainer } = await newClient(crm);
 
     expect(await crm.retainers.setEndDate(retainer.id, "")).toEqual({ ok: false, error: "end_date_invalid" });
+    expect(await crm.retainers.setEndDate(retainer.id, "2201-01-01")).toEqual({ ok: false, error: "end_date_too_far" });
     expect(await crm.retainers.setEndDate(retainer.id, "infinity")).toEqual({ ok: false, error: "end_date_invalid" });
     expect(await crm.retainers.setEndDate(retainer.id, "2026-02-30")).toEqual({ ok: false, error: "end_date_invalid" });
     expect(await crm.retainers.setEndDate(retainer.id, utcDay(-1))).toEqual({ ok: false, error: "end_before_start" });

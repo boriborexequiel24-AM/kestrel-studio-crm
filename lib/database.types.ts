@@ -103,17 +103,23 @@ isOneToOne: false
                   ]
                 },"deals": {
                   Row: {
-                    "closed_on": string | null,"company_id": string,"created_at": string,"estimated_monthly_value": number,"id": string,"kind": Database["crm"]['Enums']["deal_kind"],"next_step": string,"next_step_due": string | null,"owner_id": string,"sandbox_id": string,"stage": Database["crm"]['Enums']["deal_stage"],"title": string
+                    "closed_on": string | null,"company_id": string,"created_at": string,"estimated_monthly_value": number,"id": string,"kind": Database["crm"]['Enums']["deal_kind"],"next_step": string,"next_step_due": string | null,"owner_id": string,"renews_retainer_id": string | null,"sandbox_id": string,"stage": Database["crm"]['Enums']["deal_stage"],"title": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "closed_on"?: string | null,"company_id": string,"created_at"?: string,"estimated_monthly_value": number,"id"?: string,"kind"?: Database["crm"]['Enums']["deal_kind"],"next_step"?: string,"next_step_due"?: string | null,"owner_id": string,"sandbox_id"?: string,"stage"?: Database["crm"]['Enums']["deal_stage"],"title": string
+                    "closed_on"?: string | null,"company_id": string,"created_at"?: string,"estimated_monthly_value": number,"id"?: string,"kind"?: Database["crm"]['Enums']["deal_kind"],"next_step"?: string,"next_step_due"?: string | null,"owner_id": string,"renews_retainer_id"?: string | null,"sandbox_id"?: string,"stage"?: Database["crm"]['Enums']["deal_stage"],"title": string
                   }
                   Update: {
-                    "closed_on"?: string | null,"company_id"?: string,"created_at"?: string,"estimated_monthly_value"?: number,"id"?: string,"kind"?: Database["crm"]['Enums']["deal_kind"],"next_step"?: string,"next_step_due"?: string | null,"owner_id"?: string,"sandbox_id"?: string,"stage"?: Database["crm"]['Enums']["deal_stage"],"title"?: string
+                    "closed_on"?: string | null,"company_id"?: string,"created_at"?: string,"estimated_monthly_value"?: number,"id"?: string,"kind"?: Database["crm"]['Enums']["deal_kind"],"next_step"?: string,"next_step_due"?: string | null,"owner_id"?: string,"renews_retainer_id"?: string | null,"sandbox_id"?: string,"stage"?: Database["crm"]['Enums']["deal_stage"],"title"?: string
                   }
                   Relationships: [
                     {
+      foreignKeyName: "deals_renews_retainer"
+      columns: ["sandbox_id","company_id","renews_retainer_id"]
+isOneToOne: false
+      referencedRelation: "retainers"
+      referencedColumns: ["sandbox_id","company_id","id"]
+    },{
       foreignKeyName: "deals_sandbox_id_company_id_fkey"
       columns: ["sandbox_id","company_id"]
 isOneToOne: false

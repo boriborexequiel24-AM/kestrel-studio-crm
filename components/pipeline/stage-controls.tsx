@@ -18,12 +18,28 @@ import { usd } from "@/lib/format";
 import { StageDot } from "./stage";
 
 /** The part of a Deal its Stage controls need. */
-export type StagedDeal = Pick<DealCard, "id" | "title" | "stage" | "monthlyValue" | "proposal">;
+export type StagedDeal = Pick<DealCard, "id" | "title" | "kind" | "stage" | "monthlyValue" | "proposal">;
 
 const canWin = (deal: StagedDeal) => deal.proposal?.status === "Sent";
 const WON_RULE = "needs a Sent Proposal";
 
-/** Asks before a Deal is won: it accepts the Proposal and starts the Retainer, and neither can be undone. */
+/** What winning does, in words: New business starts a Retainer, a Renewal extends the one it renews. */
+const WIN_COPY = {
+  "New business": {
+    title: "Mark Proposal accepted and start the Retainer?",
+    outcome: (fee: string) => `a Retainer at ${fee} a month starts today`,
+    confirmLabel: "Accept and start",
+    pendingLabel: "Starting...",
+  },
+  Renewal: {
+    title: "Mark Proposal accepted and extend the Retainer?",
+    outcome: (fee: string) => `its Retainer is extended by the Proposal's term, at ${fee} a month`,
+    confirmLabel: "Accept and extend",
+    pendingLabel: "Extending...",
+  },
+};
+
+/** Asks before a Deal is won: it accepts the Proposal and starts or extends the Retainer, and neither can be undone. */
 function WinDialog({
   deal,
   ...opened
@@ -33,16 +49,17 @@ function WinDialog({
   onOpenChange: (open: boolean) => void;
   returnFocusTo: RefObject<HTMLElement | null>;
 }) {
+  const copy = WIN_COPY[deal.kind];
   return (
     <ConfirmDialog
       opened={opened}
-      title="Mark Proposal accepted and start the Retainer?"
-      description={`Proposal v${deal.proposal?.version} of "${deal.title}" becomes Accepted, the Deal moves to Won, and a Retainer at ${usd(
-        deal.monthlyValue,
-      )} a month starts today. You can't undo it, but Start over brings back the sample data.`}
+      title={copy.title}
+      description={`Proposal v${deal.proposal?.version} of "${deal.title}" becomes Accepted, the Deal moves to Won, and ${copy.outcome(
+        usd(deal.monthlyValue),
+      )}. You can't undo it, but Start over brings back the sample data.`}
       action={moveDeal}
-      confirmLabel="Accept and start"
-      pendingLabel="Starting..."
+      confirmLabel={copy.confirmLabel}
+      pendingLabel={copy.pendingLabel}
       tone="positive"
       hidden={{ dealId: deal.id, stage: "Won", proposalVersion: String(deal.proposal?.version ?? "") }}
     />

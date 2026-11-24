@@ -222,6 +222,23 @@ describe("Sandbox isolation", () => {
       expect(expectOk(await mine.crm.retainers.list({ today })).map((each) => each.id)).not.toContain(theirRetainer.id);
     });
 
+    it("can't renew a Retainer only another Sandbox has", async () => {
+      const today = utcDay();
+      const theirDeal = await dealWithSentProposal(theirs.crm);
+      expectOk(await theirs.crm.deals.moveToStage(theirDeal.id, "Won", { today }));
+      const theirRetainer = expectOk(await theirs.crm.retainers.list({ today })).find((each) => each.deal.id === theirDeal.id)!;
+
+      const renewal = await mine.crm.deals.create({
+        companyId: theirRetainer.company.id, // the same id in every Sandbox
+        renews: { retainerId: theirRetainer.id, today },
+        ownerId: theirRetainer.owner.id,
+        title: "Not mine to renew",
+        estimatedMonthlyValue: 1,
+      });
+
+      expect(renewal).toEqual({ ok: false, error: "retainer_not_found" });
+    });
+
     it("can't add a Proposal or line item to another Sandbox", async () => {
       const [theirProposal] = await theirs.db.schema("crm").from("proposals").select("id, deal_id").then(({ data }) => data!);
       const before = { proposals: await theirRows("proposals"), lineItems: await theirRows("proposal_line_items") };

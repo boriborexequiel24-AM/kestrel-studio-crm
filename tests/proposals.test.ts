@@ -14,7 +14,7 @@ describe("the sample Proposals", () => {
 
     const deals = await Promise.all(offered.map((deal) => getDeal(crm, deal.id)));
 
-    expect(deals).toHaveLength(8);
+    expect(deals).toHaveLength(10);
     for (const deal of deals) {
       const sent = deal.proposals.find((proposal) => proposal.status === "Sent")!;
       expect(deal.proposal).toEqual({ version: sent.version, status: "Sent" });

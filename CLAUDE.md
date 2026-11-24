@@ -180,6 +180,15 @@ workflow demo.
 - **A Retainer keeps the Owner it was won with** (decided 2026-11-24). Only its end date can change.
 - **Sample text never names a month, quarter, holiday or year** (decided 2026-11-24). Dates shift with
   the Sandbox but words don't; `tests/sample-text.test.ts` enforces it.
+- **A Renewal starts from its Retainer, before that ends, and a Retainer has one open at a time**
+  (decided 2026-11-24). New Deal makes New business; two open Renewals would count the work twice.
+- **A won Renewal's new term follows the old end date (or starts today if that passed); the new fee
+  applies at once** (decided 2026-11-24). The Retainer keeps its start date and Owner.
+- **A Renewal's Company is fixed** (decided 2026-11-24). It's the Company whose Retainer it renews.
+- **An end date edit is refused if the date changed since it was opened** (decided 2026-11-24). A
+  stale tab must not undo a won Renewal. End dates can't be set past the year 2200.
+- **The win confirm says "extend the Retainer" for a Renewal** (decided 2026-11-24). Same rules as
+  other wins; "start" would be wrong.
 
 ## Open questions
 - A proper logo mark (the prototype's is a placeholder).

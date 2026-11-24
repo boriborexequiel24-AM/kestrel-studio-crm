@@ -206,7 +206,6 @@ select pg_temp.template(), pg_temp.activity(v.ord), pg_temp.company(v.company),
     (8, 1, 4, 'Note', 44, 21, 'Youth program ads underperform on Meta. Testing YouTube next month.'),
     (8, 0, 4, 'Email', 71, 15, 'Shared the monthly dashboard and a short note on rising CPMs.'),
     -- Wrenfield Tea Co. (Client, Maya)
-    (9, 1, 1, 'Call', 6, 19, 'Tess flagged that the Retainer ends soon. She wants a Proposal that includes Amazon.'),
     (9, 2, 1, 'Meeting', 14, 21, 'Lunch with Hiro in San Diego. He is happy with DTC growth and nervous about wholesale.'),
     (9, 1, 4, 'Email', 21, 17, 'Subscription page test is live: new layout lifts trial-to-paid by 6% so far.'),
     (9, 0, 5, 'Note', 33, 22, 'Packaging refresh concepts are with the printer for samples.'),
@@ -234,7 +233,6 @@ select pg_temp.template(), pg_temp.activity(v.ord), pg_temp.company(v.company),
     (13, 0, 2, 'Note', 42, 20, 'Compliance review of the auto loan ads took three weeks. Build that into future timelines.'),
     (13, 1, 1, 'Email', 77, 15, 'Sent the annual plan draft.'),
     -- Fieldvane Outdoor (Client, Wendell)
-    (14, 1, 3, 'Call', 8, 21, 'Hannah wants more paid search for the online store. The Retainer runs out this coming month.'),
     (14, 2, 4, 'Email', 17, 17, 'Reese: Shopify feed fixes are done, product ads approved again.'),
     (14, 1, 5, 'Meeting', 32, 19, 'Catalog creative review in Boise. Two covers to choose from.'),
     (14, 0, 3, 'Note', 55, 16, 'They are opening a tenth store in Spokane within the year.'),
@@ -353,9 +351,9 @@ select pg_temp.template(), pg_temp.activity(v.ord), pg_temp.company(v.company),
     (40, 2, 1, 'Email', 3, 17, 'Brianna sent their sales by site and their loyalty app numbers.')
   ) as w (company, contact, author, kind, days_ago, hour, text)) as v;
 
--- 21 open Deals, New business, across the open Stages and every Owner. Ticket
--- 08 adds 5 Renewals, for about 25 in all. Numbers have gaps on purpose: ids
--- stay stable when a Deal is dropped.
+-- 21 open Deals, New business, across the open Stages and every Owner (the 5
+-- open Renewals come after the Retainers they renew). Numbers have gaps on
+-- purpose: ids stay stable when a Deal is dropped.
 -- `due` is the Next step's due day relative to the anchor's day: below zero is
 -- overdue, 0 is due today. Each Deal starts when its Company was added.
 insert into crm.deals (sandbox_id, id, company_id, owner_id, title, kind, stage, estimated_monthly_value,
@@ -436,7 +434,7 @@ select pg_temp.template(), pg_temp.proposal(v.deal, v.version), v.position, v.se
   ) as v (deal, version, position, service, fee);
 
 -- 15 active Retainers for 12 Clients, each from a Won Deal with an Accepted
--- Proposal. Five end within 60 days (ticket 08's Renewals), and three were won
+-- Proposal. Five end within 60 days, each with an open Renewal, and three were won
 -- in the last two weeks. `last_day` counts from the anchor's day.
 create temporary table sample_retainers as
 select v.*, (v.anchor_day + v.last_day + 1 - make_interval(months => v.term))::date as start_date
@@ -515,6 +513,59 @@ select pg_temp.template(), pg_temp.activity(500 + v.ord), pg_temp.company(r.comp
     (115, 1, 'Email', 1, 18, 'Simone is in for a three-month TikTok Shop test.')
   ) as w (n, contact, kind, days_before_win, hour, text)) as v
   join sample_retainers r on r.n = v.n;
+
+-- 5 open Renewals, one for each Retainer ending soon, one in each open Stage.
+-- `renews` is the Deal the Retainer came from; `due` as above.
+create temporary table sample_renewals as
+select v.*, r.company, r.owner, r.title, r.anchor_day
+  from (values
+    (201, 104, 'Negotiation', 7000, 'Confirm the new term with Nina', 2, 20),
+    (202, 111, 'Proposal sent', 7800, 'Call Hannah about the renewal Proposal', 1, 10),
+    (203, 110, 'Discovery', 9500, 'Scope the homebuyer campaign with Denise', 5, 7),
+    (204, 105, 'Qualified', 8600, 'Draft a Proposal that includes Amazon', 3, 8),
+    (205, 106, 'New', 5200, 'Ask Graham what a flat budget should cover', 6, 4)
+  ) as v (n, renews, stage, value, next_step, due, created_days_ago)
+  join sample_retainers r on r.n = v.renews;
+
+insert into crm.deals (sandbox_id, id, company_id, owner_id, title, kind, renews_retainer_id, stage, estimated_monthly_value,
+                       next_step, next_step_due, created_at)
+select pg_temp.template(), pg_temp.deal(n), pg_temp.company(company), pg_temp.teammate(owner), title, 'Renewal',
+       pg_temp.retainer(renews), stage::crm.deal_stage, value, next_step, anchor_day + due,
+       pg_temp.before_anchor(created_days_ago, 15)
+  from sample_renewals;
+
+insert into crm.proposals (sandbox_id, id, deal_id, version, status, scope_summary, term_months, created_at, sent_at)
+select pg_temp.template(), pg_temp.proposal(v.deal, 1), pg_temp.deal(v.deal), 1, 'Sent', v.scope, 12,
+       pg_temp.before_anchor(v.sent_days_ago + 1, 16), pg_temp.before_anchor(v.sent_days_ago, 18)
+  from (values
+    (201, 5, 'A full year of membership growth, with opening ads for the Ogden gym.'),
+    (202, 3, 'A full year of online store ads, with more paid search.')
+  ) as v (deal, sent_days_ago, scope);
+
+insert into crm.proposal_line_items (sandbox_id, proposal_id, position, service, monthly_fee)
+select pg_temp.template(), pg_temp.proposal(v.deal, 1), v.position, v.service, v.fee
+  from (values
+    (201, 1, 'Paid social', 4600),
+    (201, 2, 'Video series', 2600),
+    (202, 1, 'Paid search and product ads', 5400),
+    (202, 2, 'Catalog creative', 2500)
+  ) as v (deal, position, service, fee);
+
+-- What was said about each Renewal.
+insert into crm.activities (sandbox_id, id, company_id, contact_id, deal_id, author_id, kind, occurred_at, text)
+select pg_temp.template(), pg_temp.activity(600 + v.ord), pg_temp.company(r.company), pg_temp.contact(r.company, v.contact),
+       pg_temp.deal(r.n), pg_temp.teammate(r.owner), v.kind::crm.activity_kind, pg_temp.before_anchor(v.days_ago, v.hour), v.text
+  from (select row_number() over () as ord, w.* from (values
+    (201, 1, 'Meeting', 12, 18, 'Nina wants to keep going and add opening ads for Ogden.'),
+    (201, 1, 'Email', 5, 19, 'Sent Nina the renewal Proposal.'),
+    (201, 1, 'Call', 2, 17, 'Nina is fine with the new fee. She is checking the start of the new term with Eli.'),
+    (202, 1, 'Call', 8, 21, 'Hannah wants more paid search for the online store. The Retainer ends in about a month.'),
+    (202, 1, 'Email', 3, 19, 'Sent Hannah the renewal Proposal, with more paid search.'),
+    (203, 1, 'Call', 4, 18, 'Denise plans to renew and wants the homebuyer campaign in the same scope.'),
+    (204, 1, 'Call', 6, 19, 'Tess flagged that the Retainer ends soon. She wants a Proposal that includes Amazon.'),
+    (205, 2, 'Email', 3, 17, 'Graham wants to renew on a flat budget. He asked what that would cover.')
+  ) as w (deal, contact, kind, days_ago, hour, text)) as v
+  join sample_renewals r on r.n = v.deal;
 
 -- Every sample date must be before the anchor, or a fresh Sandbox would show
 -- Activities in the future. Refuse to load a Template that breaks this.

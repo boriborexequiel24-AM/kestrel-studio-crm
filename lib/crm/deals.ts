@@ -47,10 +47,10 @@ export type DealDetail = DealCard & {
   activities: Activity[];
   /** Newest version first. */
   proposals: Proposal[];
-  /** The Retainer this Deal started, once it's Won. */
+  /** The Retainer a Renewal renews, or the one this Deal started, once it's Won. */
   retainer: Retainer | null;
-  /** Why the Deal's Company can't change: Activities about it, or a Proposal sent to that Company. */
-  companyFixedBy: "Activities" | "Proposal" | null;
+  /** Why the Deal's Company can't change: it renews that Company's Retainer, has Activities, or a Proposal was sent. */
+  companyFixedBy: "Renewal" | "Activities" | "Proposal" | null;
 };
 
 export type DealTotals = { deals: number; monthlyValue: number };
@@ -79,7 +79,10 @@ export type DealInput = {
   nextStepDue?: Day | null;
 };
 
-export const DEAL_COLUMNS = `id, title, kind, stage, estimated_monthly_value, next_step, next_step_due,
+/** A new Deal is New business, unless it names the Retainer it renews. */
+export type NewDealInput = DealInput & { renews?: { retainerId: string; today: Day } };
+
+export const DEAL_COLUMNS = `id, title, kind, renews_retainer_id, stage, estimated_monthly_value, next_step, next_step_due,
   company:companies!inner(id, name), owner:teammates!inner(${OWNER_REF_COLUMNS}),
   proposals(version, status, line_items:proposal_line_items(monthly_fee))`;
 
@@ -95,6 +98,17 @@ export function dealsArea({ db, inLiveSandbox }: CrmContext) {
     if (!error) return ok(undefined);
     const rule = ruleBroken(error, "not_found", "deal_already_won", "won_needs_sent_proposal", "proposal_changed");
     return rule ? fail(rule) : unexpected(error);
+  }
+
+  /** What makes a new Deal a Renewal, if it is one. Its Company is checked by the database. */
+  async function checkRenewal(renews: NewDealInput["renews"]) {
+    if (!renews) return ok({});
+    if (!isId(renews.retainerId)) return fail("retainer_not_found");
+    const { data, error } = await db.from("retainers").select("end_date").eq("id", renews.retainerId).maybeSingle();
+    if (error) unexpected(error);
+    if (!data) return fail("retainer_not_found");
+    if (data.end_date < renews.today) return fail("retainer_ended");
+    return ok({ kind: "Renewal" as const, renews_retainer_id: renews.retainerId });
   }
 
   /** Whether a Proposal on this Deal was already sent to a Company other than this one. */
@@ -122,7 +136,7 @@ export function dealsArea({ db, inLiveSandbox }: CrmContext) {
         if (proposals.error) unexpected(proposals.error);
         if (retainers.error) unexpected(retainers.error);
         const card = toCard(deal, view.today);
-        const started = retainers.data.find((retainer) => retainer.deal.id === id);
+        const retainer = retainers.data.find((each) => each.id === deal.renews_retainer_id || each.deal.id === id);
         return ok<DealDetail>({
           ...card,
           company: { ...card.company, status: companyStatus(retainers.data, view.today) },
@@ -130,26 +144,26 @@ export function dealsArea({ db, inLiveSandbox }: CrmContext) {
           contacts: contacts.data.map(toContact),
           activities: activities.data.map(toActivity),
           proposals: proposals.data.map(toProposal),
-          retainer: started ? toRetainer(started, view.today) : null,
-          companyFixedBy: activities.data.length
-            ? "Activities"
-            : proposals.data.some((proposal) => proposal.sent_at !== null)
-              ? "Proposal"
-              : null,
+          retainer: retainer ? toRetainer(retainer, view.today) : null,
+          companyFixedBy: companyFixedBy(deal.kind, activities.data.length > 0, proposals.data.some((each) => each.sent_at !== null)),
         });
       }),
 
-    /** A new Deal starts in New. */
-    create: (input: DealInput) =>
+    /** A new Deal starts in New. A Renewal starts before its Retainer ends, and a Retainer has one open at a time. */
+    create: (input: NewDealInput) =>
       inLiveSandbox(async () => {
         const fields = checkFields(input);
         if (!fields.ok) return fields;
-        const { data, error } = await db.from("deals").insert(fields.value).select("id").single();
+        const renewal = await checkRenewal(input.renews);
+        if (!renewal.ok) return renewal;
+        const { data, error } = await db.from("deals").insert({ ...fields.value, ...renewal.value }).select("id").single();
+        if (error?.message.includes("deals_renews_retainer")) return fail("retainer_not_found");
+        if (error?.message.includes("deals_one_open_renewal")) return fail("renewal_already_open");
         if (error) return referenceFailure(error);
         return ok({ id: data.id });
       }),
 
-    /** Edits a Deal. Its Company stays fixed once the Deal has Activities or a Proposal was sent. */
+    /** Edits a Deal. Its Company stays fixed if it's a Renewal, has Activities or a Proposal was sent. */
     update: (id: string, input: DealInput) =>
       inLiveSandbox(async () => {
         if (!isId(id)) return fail("not_found");
@@ -161,14 +175,12 @@ export function dealsArea({ db, inLiveSandbox }: CrmContext) {
         return data.length ? ok(undefined) : fail("not_found");
       }),
 
-    /** Deletes the Deal, unless it started a Retainer. Its Activities stay on the Company, unlinked. */
+    /** Deletes the Deal, unless it's Won. Its Activities stay on the Company, unlinked. */
     delete: (id: string) =>
       inLiveSandbox(async () => {
         if (!isId(id)) return fail("not_found");
         const { data, error } = await db.from("deals").delete().eq("id", id).select("id");
-        // Named in the migration: a Retainer keeps the Deal it came from.
-        if (error?.message.includes("retainers_deal_at_company")) return fail("deal_has_retainer");
-        if (error) unexpected(error);
+        if (error) return fail(ruleBroken(error, "deal_already_won") ?? unexpected(error));
         return data.length ? ok(undefined) : fail("not_found");
       }),
 
@@ -189,8 +201,9 @@ export function dealsArea({ db, inLiveSandbox }: CrmContext) {
 
     /**
      * Moves a Deal to a Stage. Won accepts its Sent Proposal and starts the
-     * Retainer, all in one step, and is final: pass the Proposal version that
-     * was confirmed, and any other is refused. Lost comes with Lost reasons.
+     * Retainer (or extends it, for a Renewal), all in one step, and is final:
+     * pass the Proposal version that was confirmed, and any other is refused.
+     * Lost comes with Lost reasons.
      */
     moveToStage: (id: string, stage: DealStage, move: { today: Day; proposalVersion?: number }) =>
       inLiveSandbox(async () => {
@@ -280,10 +293,18 @@ function checkFields(input: DealInput) {
   });
 }
 
+function companyFixedBy(kind: DealKind, hasActivities: boolean, proposalSent: boolean): DealDetail["companyFixedBy"] {
+  if (kind === "Renewal") return "Renewal";
+  if (hasActivities) return "Activities";
+  return proposalSent ? "Proposal" : null;
+}
+
 /** Why a Deal insert or update broke a link: its Company is fixed by its Activities, or a Company or Owner is missing. */
 function referenceFailure(error: PostgrestError) {
   if (!isMissingReference(error)) unexpected(error);
-  // Named in the migration: each Activity's Deal must be about the Activity's Company.
+  // Named in the migrations: a Renewal is at its Retainer's Company, and each
+  // Activity's Deal is about the Activity's Company.
+  if (error.message.includes("deals_renews_retainer")) return fail("company_fixed_by_renewal");
   if (error.message.includes("activities_deal_at_company")) return fail("company_fixed_by_activities");
   return error.message.includes("owner_id") ? fail("owner_not_found") : fail("company_not_found");
 }

@@ -1,11 +1,12 @@
 "use client";
 
-import { CalendarClock, Pencil, Plus, Trash2 } from "lucide-react";
+import { CalendarClock, Pencil, Plus, Repeat, Trash2 } from "lucide-react";
 import { createDeal, deleteDeal, setNextStep, updateDeal } from "@/app/(app)/pipeline/actions";
 import type { OwnerOption } from "@/components/companies/owner-options";
 import { SelectField, TextField } from "@/components/forms/fields";
 import { ConfirmDeleteDialog, FormDialog } from "@/components/forms/form-dialog";
 import { Button } from "@/components/ui/button";
+import type { DealDetail } from "@/lib/crm";
 import { MAX_MONTHLY_DOLLARS } from "@/lib/crm/terms";
 
 type CompanyOption = { value: string; label: string };
@@ -20,27 +21,32 @@ export type EditableDeal = {
   nextStep: string;
   nextStepDue: string | null;
   /** Why the Company can't change, if it can't. */
-  companyFixedBy: "Activities" | "Proposal" | null;
+  companyFixedBy: DealDetail["companyFixedBy"];
 };
+
+const FIXED_BECAUSE: Record<NonNullable<EditableDeal["companyFixedBy"]>, string> = {
+  Renewal: "Fixed, because this Deal renews this Company's Retainer.",
+  Activities: "Fixed, because this Deal has Activities about it.",
+  Proposal: "Fixed, because a Proposal was sent to this Company.",
+};
+
+/** What a form for a new or an existing Deal starts with. */
+type DealStart = Partial<Omit<EditableDeal, "id">>;
 
 /** The choices a Deal form offers. */
 export type DealFormOptions = { companies: CompanyOption[]; owners: OwnerOption[] };
 
-function DealFields({ options, deal }: { options: DealFormOptions; deal?: EditableDeal }) {
+function DealFields({ options, deal }: { options: DealFormOptions; deal?: DealStart }) {
   const { companies, owners } = options;
   return (
     <>
-      <TextField label="Title" name="title" defaultValue={deal?.title} required autoComplete="off" placeholder="Spring launch campaign" />
+      <TextField label="Title" name="title" defaultValue={deal?.title} required autoComplete="off" placeholder="Product launch campaign" />
       {deal?.companyFixedBy ? (
         <div className="grid gap-1.5">
           <p className="text-[13px] font-semibold">Company</p>
           <p className="text-[14px]">
             {companies.find((company) => company.value === deal.companyId)?.label}
-            <span className="block text-[13px] text-muted-foreground">
-              {deal.companyFixedBy === "Activities"
-                ? "Fixed, because this Deal has Activities about it."
-                : "Fixed, because a Proposal was sent to this Company."}
-            </span>
+            <span className="block text-[13px] text-muted-foreground">{FIXED_BECAUSE[deal.companyFixedBy]}</span>
           </p>
           <input type="hidden" name="companyId" value={deal.companyId} />
         </div>
@@ -83,12 +89,43 @@ export function NewDealButton({ options, mine }: { options: DealFormOptions; min
         </Button>
       }
       title="New Deal"
-      description="It starts in New. Its Monthly value is an estimate until a Proposal is sent."
+      description="New business, starting in New. Its Monthly value is an estimate until a Proposal is sent. To renew a Retainer, start from Retainers or the Company."
       action={createDeal}
       submitLabel="Add Deal"
       hidden={mine ? { mine: "1" } : {}}
     >
       <DealFields options={options} />
+    </FormDialog>
+  );
+}
+
+/** What a Renewal starts from. */
+export type RenewableRetainer = { id: string; title: string; company: { id: string; name: string }; ownerId: string; monthlyFee: number };
+
+export function StartRenewalButton({ retainer, owners }: { retainer: RenewableRetainer; owners: OwnerOption[] }) {
+  return (
+    <FormDialog
+      trigger={
+        <Button variant="outline" aria-label={`Start Renewal of ${retainer.company.name}: ${retainer.title}`} className="h-11 rounded-lg px-3 font-semibold">
+          <Repeat aria-hidden /> Start Renewal
+        </Button>
+      }
+      title="Start Renewal"
+      description="A Deal in New. Winning it extends this Retainer by the Proposal's term, at the Proposal's fee."
+      action={createDeal}
+      submitLabel="Start Renewal"
+      hidden={{ renewsRetainerId: retainer.id }}
+    >
+      <DealFields
+        options={{ owners, companies: [{ value: retainer.company.id, label: retainer.company.name }] }}
+        deal={{
+          title: retainer.title,
+          companyId: retainer.company.id,
+          ownerId: retainer.ownerId,
+          estimatedMonthlyValue: retainer.monthlyFee,
+          companyFixedBy: "Renewal",
+        }}
+      />
     </FormDialog>
   );
 }

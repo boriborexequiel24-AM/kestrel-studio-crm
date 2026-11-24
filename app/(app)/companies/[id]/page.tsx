@@ -7,10 +7,11 @@ import { ACTIVITY_KIND_ICON } from "@/components/companies/activity-kind";
 import { DeleteCompanyButton, EditCompanyButton } from "@/components/companies/company-forms";
 import { AddContactButton, ContactActions } from "@/components/companies/contact-forms";
 import { ActivityActions, LogActivityButton } from "@/components/companies/activity-forms";
-import { ownerOptions } from "@/components/companies/owner-options";
+import { ownerOptions, type OwnerOption } from "@/components/companies/owner-options";
 import { SandboxLine } from "@/components/app/sandbox-line";
 import { StatusChip } from "@/components/companies/status-chip";
 import { StageDot } from "@/components/pipeline/stage";
+import { RetainerRenewal } from "@/components/retainers/renewal";
 import { EditEndDateButton } from "@/components/retainers/retainer-forms";
 import { RetainerStateChip } from "@/components/retainers/retainer-state";
 import type { CompanyDetail } from "@/lib/crm";
@@ -72,7 +73,7 @@ async function CompanyView({ params }: { params: Promise<{ id: string }> }) {
       <div className="mt-6 grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_380px]">
         <Timeline company={company} />
         <div className="grid gap-5">
-          <Retainers company={company} />
+          <Retainers company={company} owners={owners} />
           <Deals company={company} />
           <Contacts company={company} />
         </div>
@@ -170,7 +171,7 @@ function Contacts({ company }: { company: CompanyDetail }) {
   );
 }
 
-function Retainers({ company }: { company: CompanyDetail }) {
+function Retainers({ company, owners }: { company: CompanyDetail; owners: OwnerOption[] }) {
   return (
     <section aria-labelledby="retainers-heading" className="rounded-xl border border-border bg-card">
       <h2 id="retainers-heading" className="border-b border-border px-5 py-3 text-[16px] font-bold">
@@ -190,7 +191,8 @@ function Retainers({ company }: { company: CompanyDetail }) {
                 <span className="font-semibold text-foreground tabular-nums">{usd(retainer.monthlyFee)}</span> a month, ends{" "}
                 {longDay(retainer.endDate)}. Owner: {fullName(retainer.owner)}
               </p>
-              <div className="mt-2">
+              <div className="mt-2 flex flex-wrap gap-2">
+                <RetainerRenewal retainer={retainer} owners={owners} />
                 <EditEndDateButton
                   retainer={{ id: retainer.id, startDate: retainer.startDate, endDate: retainer.endDate, title: retainer.deal.title }}
                 />
@@ -223,7 +225,7 @@ function Deals({ company }: { company: CompanyDetail }) {
                   <span className="block font-semibold text-primary">{deal.title}</span>
                   <span className="mt-0.5 flex items-center gap-1.5 text-[13px] text-muted-foreground">
                     <StageDot stage={deal.stage} /> {deal.stage}
-                    {deal.kind === "Renewal" && ", Renewal"}
+                    {deal.kind === "Renewal" && " · Renewal"}
                   </span>
                 </span>
                 <span className="shrink-0 text-[13px] font-semibold tabular-nums">{usd(deal.monthlyValue)}</span>

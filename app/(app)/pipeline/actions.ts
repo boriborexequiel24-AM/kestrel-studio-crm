@@ -30,7 +30,9 @@ function dealFields(form: FormData) {
 
 export async function createDeal(_state: FormState, form: FormData): Promise<FormState> {
   const crm = await getCrm();
-  const created = await crm.deals.create(dealFields(form));
+  const retainerId = text(form, "renewsRetainerId");
+  const renews = retainerId ? { retainerId, today: await visitorToday() } : undefined;
+  const created = await crm.deals.create({ ...dealFields(form), renews });
   if (created.ok) redirect(`/deals/${created.value.id}${mineQuery(form)}`);
   return toFormState(created, form);
 }

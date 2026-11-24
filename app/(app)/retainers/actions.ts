@@ -6,5 +6,5 @@ import { formText as text, toFormState } from "@/lib/form-results";
 
 export async function setRetainerEndDate(_state: FormState, form: FormData): Promise<FormState> {
   const crm = await getCrm();
-  return toFormState(await crm.retainers.setEndDate(text(form, "retainerId"), text(form, "endDate")), form);
+  return toFormState(await crm.retainers.setEndDate(text(form, "retainerId"), text(form, "endDate"), { was: text(form, "was") }), form);
 }

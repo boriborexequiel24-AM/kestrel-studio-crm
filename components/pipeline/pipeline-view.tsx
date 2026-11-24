@@ -52,8 +52,8 @@ function mineQuery(mine: boolean) {
 }
 
 /** Only what the Stage controls need goes to the browser, not the whole Deal. */
-function stagedDeal({ id, title, stage, monthlyValue, proposal }: DealCard): StagedDeal {
-  return { id, title, stage, monthlyValue, proposal };
+function stagedDeal({ id, title, kind, stage, monthlyValue, proposal }: DealCard): StagedDeal {
+  return { id, title, kind, stage, monthlyValue, proposal };
 }
 
 /** The Companies and Owners a Deal form can pick from. */
@@ -227,7 +227,7 @@ function DealCardView({ deal, today, mine, selected }: { deal: DealCard; today: 
           <span className="shrink-0 text-[13px] font-bold tabular-nums">{usdShort(deal.monthlyValue)}</span>
         </span>
         <span className="block truncate text-[12px] text-muted-foreground">
-          {deal.kind === "Renewal" ? "Renewal: " : ""}
+          {deal.kind === "Renewal" && "Renewal · "}
           {deal.title}
         </span>
         {deal.nextStep ? (
@@ -292,13 +292,13 @@ async function DealSheet({ id, searchParams }: { id: string; searchParams: Searc
             }}
             options={options}
           />
-          {deal.stage !== "Won" && <DeleteDealButton deal={deal} mine={mine} />}
+          {deal.stage !== "Won" && <DeleteDealButton deal={{ id: deal.id, title: deal.title }} mine={mine} />}
         </div>
       </SheetHeader>
 
       <div className="space-y-5 p-5">
         <StageStepper deal={deal} />
-        {deal.retainer && <RetainerCard retainer={deal.retainer} />}
+        {deal.retainer && <RetainerCard deal={deal} retainer={deal.retainer} />}
         {(deal.nextStep || deal.stage !== "Won") && <NextStepCard deal={deal} today={today} />}
         <div className="grid items-start gap-5 sm:grid-cols-2">
           <ProposalCard deal={deal} />
@@ -332,18 +332,23 @@ function StageStepper({ deal }: { deal: DealDetail }) {
   );
 }
 
-/** What winning the Deal started. */
-function RetainerCard({ retainer }: { retainer: Retainer }) {
+/** What winning the Deal started, or the Retainer a Renewal is about. */
+function RetainerCard({ deal, retainer }: { deal: DealDetail; retainer: Retainer }) {
+  const heading = deal.kind === "New business" ? "Retainer" : deal.stage === "Won" ? "Renewed this Retainer" : "Renews this Retainer";
   return (
-    <section aria-labelledby="retainer-heading" className="rounded-xl border border-won/30 bg-won/5 p-4">
+    <section
+      aria-labelledby="retainer-heading"
+      className={`rounded-xl border p-4 ${deal.stage === "Won" ? "border-won/30 bg-won/5" : "border-border bg-card"}`}
+    >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 id="retainer-heading" className="flex items-center gap-1.5 text-[13px] font-semibold text-muted-foreground">
-          <Repeat className="size-4" aria-hidden /> Retainer
+          <Repeat className="size-4" aria-hidden /> {heading}
         </h3>
         <RetainerStateChip state={retainer.state} />
       </div>
       <p className="mt-1 text-[17px] font-semibold tabular-nums">{usd(retainer.monthlyFee)} a month</p>
       <p className="text-[13px] text-muted-foreground">
+        {deal.kind === "Renewal" && `${retainer.deal.title}, `}
         {longDay(retainer.startDate)} to {longDay(retainer.endDate)}
       </p>
     </section>

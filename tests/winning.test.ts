@@ -140,7 +140,7 @@ describe("a Won Deal", () => {
     expectOk(await crm.deals.moveToStage(deal.id, "Won", TODAY));
 
     expect(await crm.deals.moveToStage(deal.id, "Negotiation", TODAY)).toEqual({ ok: false, error: "deal_already_won" });
-    expect(await crm.deals.delete(deal.id)).toEqual({ ok: false, error: "deal_has_retainer" });
+    expect(await crm.deals.delete(deal.id)).toEqual({ ok: false, error: "deal_already_won" });
     expect(await crm.proposals.createDraft(deal.id, OFFER)).toEqual({ ok: false, error: "deal_already_won" });
     expect(await crm.proposals.markSent(leftover.id)).toEqual({ ok: false, error: "deal_already_won" });
     expect((await getDeal(crm, deal.id)).stage).toBe("Won");

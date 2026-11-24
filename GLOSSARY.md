@@ -35,7 +35,7 @@ Where a Deal currently sits in the Pipeline.
 _Avoid_: Status, Step, Phase
 
 **Won**:
-The Stage a Deal reaches when its Proposal is accepted, which creates a Retainer.
+The Stage a Deal reaches when its Proposal is accepted, which starts a Retainer or, for a Renewal, extends one.
 _Avoid_: Closed, Signed
 
 **Lost**:

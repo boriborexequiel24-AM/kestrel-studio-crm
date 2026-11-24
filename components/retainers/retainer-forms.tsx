@@ -23,7 +23,7 @@ export function EditEndDateButton({ retainer }: EndDateButtonProps) {
       description={`${retainer.title} started ${longDay(retainer.startDate)}. The end date is its last day.`}
       action={setRetainerEndDate}
       submitLabel="Save end date"
-      hidden={{ retainerId: retainer.id }}
+      hidden={{ retainerId: retainer.id, was: retainer.endDate }}
     >
       <TextField label="End date" name="endDate" type="date" min={retainer.startDate} defaultValue={retainer.endDate} required />
     </FormDialog>

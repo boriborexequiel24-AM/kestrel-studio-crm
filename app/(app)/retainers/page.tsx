@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { PageHeader } from "@/components/app/page-header";
+import { ownerOptions } from "@/components/companies/owner-options";
+import { RetainerRenewal } from "@/components/retainers/renewal";
 import { EditEndDateButton } from "@/components/retainers/retainer-forms";
 import { RetainerStateChip } from "@/components/retainers/retainer-state";
 import { requireLiveSandbox, valueOrLanding } from "@/lib/crm/server";
@@ -29,14 +31,16 @@ export default function RetainersPage() {
 
 async function RetainersSection() {
   const [{ crm }, today] = await Promise.all([requireLiveSandbox(), visitorToday()]);
-  const retainers = valueOrLanding(await crm.retainers.list({ today }));
+  const [listed, team] = await Promise.all([crm.retainers.list({ today }), crm.team.list()]);
+  const retainers = valueOrLanding(listed);
+  const owners = ownerOptions(valueOrLanding(team));
   const active = retainers.filter((retainer) => retainer.state !== "Ended");
   const endingSoon = retainers.filter((retainer) => retainer.state === "Ends soon");
   const monthly = active.reduce((sum, retainer) => sum + retainer.monthlyFee, 0);
 
   return (
     <div className="relative mt-5 overflow-x-auto rounded-xl border border-border bg-card">
-      <table className="w-full min-w-[860px] text-left text-[14px]">
+      <table className="w-full min-w-[1020px] text-left text-[14px]">
         <caption className="border-b border-border px-4 py-3 text-left text-[13px] font-semibold text-muted-foreground">
           {active.length} active {active.length === 1 ? "Retainer" : "Retainers"}, {usd(monthly)} a month.{" "}
           {endingSoon.length} {endingSoon.length === 1 ? "ends" : "end"} within 60 days.
@@ -47,6 +51,7 @@ async function RetainersSection() {
             <th scope="col" className="px-4 py-2.5 text-right font-semibold">Monthly fee</th>
             <th scope="col" className="px-4 py-2.5 font-semibold">Ends</th>
             <th scope="col" className="px-4 py-2.5 font-semibold">Owner</th>
+            <th scope="col" className="px-4 py-2.5 font-semibold">Renewal</th>
             <th scope="col" className="px-4 py-2.5">
               <span className="sr-only">Change</span>
             </th>
@@ -75,6 +80,9 @@ async function RetainersSection() {
                   </span>
                   {fullName(retainer.owner)}
                 </span>
+              </td>
+              <td className="px-4 py-2">
+                <RetainerRenewal retainer={retainer} owners={owners} />
               </td>
               <td className="px-4 py-2 text-right">
                 <EditEndDateButton
