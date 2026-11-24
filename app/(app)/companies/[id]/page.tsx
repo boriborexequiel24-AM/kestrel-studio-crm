@@ -225,6 +225,7 @@ function Deals({ company }: { company: CompanyDetail }) {
                   <span className="block font-semibold text-primary">{deal.title}</span>
                   <span className="mt-0.5 flex items-center gap-1.5 text-[13px] text-muted-foreground">
                     <StageDot stage={deal.stage} /> {deal.stage}
+                    {deal.lostReason && `: ${deal.lostReason}`}
                     {deal.kind === "Renewal" && " · Renewal"}
                   </span>
                 </span>

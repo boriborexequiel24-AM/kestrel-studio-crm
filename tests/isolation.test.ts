@@ -222,6 +222,20 @@ describe("Sandbox isolation", () => {
       expect(expectOk(await mine.crm.retainers.list({ today })).map((each) => each.id)).not.toContain(theirRetainer.id);
     });
 
+    it("can't see another Sandbox's Deals on the Pipeline, open or closed", async () => {
+      const view = { today: utcDay(), owners: "everyone" as const };
+      const open = await dealWithSentProposal(theirs.crm);
+      const lost = await dealWithSentProposal(theirs.crm);
+      expectOk(await theirs.crm.deals.moveToStage(lost.id, "Lost", { ...view, lostReason: "Price" }));
+
+      const mineOpen = expectOk(await mine.crm.pipeline.board(view)).deals.map((deal) => deal.id);
+      const mineClosed = expectOk(await mine.crm.pipeline.closed(view)).map((deal) => deal.id);
+
+      expect(mineOpen).not.toContain(open.id);
+      expect(mineClosed).not.toContain(lost.id);
+      expect(await mine.crm.deals.moveToStage(open.id, "Lost", { ...view, lostReason: "Price" })).toEqual({ ok: false, error: "not_found" });
+    });
+
     it("can't renew a Retainer only another Sandbox has", async () => {
       const today = utcDay();
       const theirDeal = await dealWithSentProposal(theirs.crm);

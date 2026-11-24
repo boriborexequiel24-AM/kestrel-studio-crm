@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
-import { CalendarClock, Check, MessageSquareText, Repeat, Users } from "lucide-react";
+import { CalendarClock, Check, CircleX, MessageSquareText, Repeat, Users } from "lucide-react";
 import { PageHeader } from "@/components/app/page-header";
 import { RelativeTime } from "@/components/app/relative-time";
 import { ACTIVITY_KIND_ICON } from "@/components/companies/activity-kind";
@@ -9,11 +9,13 @@ import { LogActivityButton } from "@/components/companies/activity-forms";
 import { ownerOptions } from "@/components/companies/owner-options";
 import { RetainerStateChip } from "@/components/retainers/retainer-state";
 import { SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { OPEN_STAGES, isOpenStage, type Crm, type DealCard, type DealDetail, type PipelineBoard, type Retainer } from "@/lib/crm";
+import { OPEN_STAGES, isOpenStage, type Crm, type DealCard, type DealDetail, type DealStage, type LostReason, type PipelineBoard, type Retainer } from "@/lib/crm";
 import { requireLiveSandbox, valueOrLanding, landingFor } from "@/lib/crm/server";
 import { dueLabel, fullName, longDay, usd, usdShort } from "@/lib/format";
 import { visitorToday } from "@/lib/visitor-day";
+import { ClosedTable } from "./closed-table";
 import { DealSheetFrame } from "./deal-sheet-frame";
+import { choiceQuery, readChoice, type PipelineChoice } from "./pipeline-choice";
 import { ProposalCard } from "./proposal-card";
 import { DeleteDealButton, EditDealButton, NewDealButton, NextStepButton, type DealFormOptions } from "./deal-forms";
 import { STAGE_COLOR } from "./stage";
@@ -31,7 +33,7 @@ export function PipelineView({ searchParams, openDealId }: { searchParams: Searc
         </Suspense>
       </PageHeader>
       <Suspense fallback={<p role="status" className="mt-5 rounded-xl border border-border bg-card p-4 text-muted-foreground">Loading the Pipeline...</p>}>
-        <Board searchParams={searchParams} openDealId={openDealId} />
+        <Deals searchParams={searchParams} openDealId={openDealId} />
       </Suspense>
       {openDealId && (
         <Suspense>
@@ -42,13 +44,9 @@ export function PipelineView({ searchParams, openDealId }: { searchParams: Searc
   );
 }
 
-async function isMine(searchParams: SearchParams) {
-  return (await searchParams).mine === "1";
-}
-
-/** Keeps the Mine / Everyone choice when moving between the Pipeline and a Deal. */
-function mineQuery(mine: boolean) {
-  return mine ? "?mine=1" : "";
+async function choiceFrom(searchParams: SearchParams): Promise<PipelineChoice> {
+  const params = await searchParams;
+  return readChoice((name) => params[name]);
 }
 
 /** Only what the Stage controls need goes to the browser, not the whole Deal. */
@@ -66,43 +64,73 @@ async function dealFormOptions(crm: Crm): Promise<DealFormOptions> {
 }
 
 async function PipelineControls({ searchParams, openDealId }: { searchParams: SearchParams; openDealId?: string }) {
-  const mine = await isMine(searchParams);
+  const choice = await choiceFrom(searchParams);
   const { crm } = await requireLiveSandbox();
   // Switching stays on the open Deal, if there is one.
-  const base = openDealId ? `/deals/${openDealId}` : "/pipeline";
-  const choices = [
-    { label: "Everyone", href: base, active: !mine },
-    { label: "Mine", href: `${base}?mine=1`, active: mine },
-  ];
+  const href = (change: Partial<PipelineChoice>) =>
+    `${openDealId ? `/deals/${openDealId}` : "/pipeline"}${choiceQuery({ ...choice, ...change })}`;
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <div role="group" aria-label="Whose Deals" className="flex rounded-lg border border-border bg-card p-1 text-[14px] font-semibold">
-        {choices.map((choice) => (
-          <Link
-            key={choice.label}
-            href={choice.href}
-            scroll={false}
-            aria-current={choice.active ? "true" : undefined}
-            className={`flex h-9 items-center rounded-md px-4 transition-colors duration-150 ${
-              choice.active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {choice.label}
-          </Link>
-        ))}
-      </div>
-      <NewDealButton options={await dealFormOptions(crm)} mine={mine} />
+      <Switch
+        label="Open or Closed Deals"
+        options={[
+          { label: "Open", href: href({ closed: false }), active: !choice.closed },
+          { label: "Closed", href: href({ closed: true }), active: choice.closed },
+        ]}
+      />
+      <Switch
+        label="Whose Deals"
+        options={[
+          { label: "Everyone", href: href({ mine: false }), active: !choice.mine },
+          { label: "Mine", href: href({ mine: true }), active: choice.mine },
+        ]}
+      />
+      <NewDealButton options={await dealFormOptions(crm)} mine={choice.mine} />
     </div>
   );
 }
 
-async function Board({ searchParams, openDealId }: { searchParams: SearchParams; openDealId?: string }) {
-  const mine = await isMine(searchParams);
+function Switch({ label, options }: { label: string; options: { label: string; href: string; active: boolean }[] }) {
+  return (
+    <div role="group" aria-label={label} className="flex rounded-lg border border-border bg-card p-1 text-[14px] font-semibold">
+      {options.map((option) => (
+        <Link
+          key={option.label}
+          href={option.href}
+          scroll={false}
+          aria-current={option.active ? "true" : undefined}
+          className={`relative flex h-9 items-center rounded-md px-4 transition-colors duration-150 after:absolute after:inset-x-0 after:-inset-y-1 ${
+            option.active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          {option.label}
+        </Link>
+      ))}
+    </div>
+  );
+}
+
+/** The KPI strip, then the grid of open Deals or the table of closed ones. */
+async function Deals({ searchParams, openDealId }: { searchParams: SearchParams; openDealId?: string }) {
+  const choice = await choiceFrom(searchParams);
   const [{ crm }, today] = await Promise.all([requireLiveSandbox(), visitorToday()]);
-  const board = valueOrLanding(await crm.pipeline.board({ today, owners: mine ? "mine" : "everyone" }));
+  const view = { today, owners: choice.mine ? ("mine" as const) : ("everyone" as const) };
+  const [board, closed] = await Promise.all([crm.pipeline.board(view), choice.closed ? crm.pipeline.closed(view) : null]);
   return (
     <>
-      <KpiStrip board={board} />
+      <KpiStrip board={valueOrLanding(board)} />
+      {closed ? (
+        <ClosedTable deals={valueOrLanding(closed)} choice={choice} openDealId={openDealId} />
+      ) : (
+        <Grid board={valueOrLanding(board)} today={today} choice={choice} openDealId={openDealId} />
+      )}
+    </>
+  );
+}
+
+function Grid({ board, today, choice, openDealId }: { board: PipelineBoard; today: string; choice: PipelineChoice; openDealId?: string }) {
+  return (
+    <>
       <div className="mt-5 overflow-x-auto rounded-xl border border-border bg-card">
         <table className="w-full min-w-[1060px] table-fixed border-collapse text-left">
           <caption className="sr-only">Open Deals by Owner and Stage</caption>
@@ -149,7 +177,7 @@ async function Board({ searchParams, openDealId }: { searchParams: SearchParams;
                         .filter((deal) => deal.owner.id === owner.id && deal.stage === stage)
                         .map((deal) => (
                           <li key={deal.id}>
-                            <DealCardView deal={deal} today={today} mine={mine} selected={deal.id === openDealId} />
+                            <DealCardView deal={deal} today={today} choice={choice} selected={deal.id === openDealId} />
                           </li>
                         ))}
                     </ul>
@@ -208,7 +236,7 @@ function Kpi({ label, value, detail, bar, alert = false }: { label: string; valu
   );
 }
 
-function DealCardView({ deal, today, mine, selected }: { deal: DealCard; today: string; mine: boolean; selected: boolean }) {
+function DealCardView({ deal, today, choice, selected }: { deal: DealCard; today: string; choice: PipelineChoice; selected: boolean }) {
   const overdue = deal.nextStep?.overdue;
   return (
     <div
@@ -217,7 +245,7 @@ function DealCardView({ deal, today, mine, selected }: { deal: DealCard; today: 
       }`}
     >
       <Link
-        href={`/deals/${deal.id}${mineQuery(mine)}`}
+        href={`/deals/${deal.id}${choiceQuery(choice)}`}
         scroll={false}
         aria-current={selected ? "true" : undefined}
         className="block min-h-11 rounded-lg p-2.5 pr-9"
@@ -250,14 +278,14 @@ function DealCardView({ deal, today, mine, selected }: { deal: DealCard; today: 
 }
 
 async function DealSheet({ id, searchParams }: { id: string; searchParams: SearchParams }) {
-  const mine = await isMine(searchParams);
+  const choice = await choiceFrom(searchParams);
   const [{ crm }, today] = await Promise.all([requireLiveSandbox(), visitorToday()]);
   const [found, options] = await Promise.all([crm.deals.get(id, { today }), dealFormOptions(crm)]);
   if (!found.ok) return found.error === "not_found" ? notFound() : redirect(landingFor(found.error));
   const deal = found.value;
 
   return (
-    <DealSheetFrame closeHref={`/pipeline${mineQuery(mine)}`}>
+    <DealSheetFrame closeHref={`/pipeline${choiceQuery(choice)}`}>
       <SheetHeader className="sticky top-0 z-10 gap-2 border-b border-border bg-card p-5 pr-14">
         <p className="flex flex-wrap items-center gap-x-2 text-[13px] text-muted-foreground">
           <Link href={`/companies/${deal.company.id}`} className="font-semibold text-foreground hover:text-primary hover:underline">
@@ -292,14 +320,15 @@ async function DealSheet({ id, searchParams }: { id: string; searchParams: Searc
             }}
             options={options}
           />
-          {deal.stage !== "Won" && <DeleteDealButton deal={{ id: deal.id, title: deal.title }} mine={mine} />}
+          {deal.stage !== "Won" && <DeleteDealButton deal={{ id: deal.id, title: deal.title }} choice={choice} />}
         </div>
       </SheetHeader>
 
       <div className="space-y-5 p-5">
-        <StageStepper deal={deal} />
+        <StageStepper stage={deal.stage} />
+        {deal.lostReason && <LostBanner reason={deal.lostReason} on={deal.closedOn} />}
         {deal.retainer && <RetainerCard deal={deal} retainer={deal.retainer} />}
-        {(deal.nextStep || deal.stage !== "Won") && <NextStepCard deal={deal} today={today} />}
+        {(deal.nextStep || isOpenStage(deal.stage)) && <NextStepCard deal={deal} today={today} />}
         <div className="grid items-start gap-5 sm:grid-cols-2">
           <ProposalCard deal={deal} />
           <PeopleCard deal={deal} />
@@ -311,8 +340,9 @@ async function DealSheet({ id, searchParams }: { id: string; searchParams: Searc
 }
 
 /** Where the Deal is in the Pipeline: color, name and a check for done Stages, never color alone. */
-function StageStepper({ deal }: { deal: DealDetail }) {
-  const current = isOpenStage(deal.stage) ? OPEN_STAGES.indexOf(deal.stage) : OPEN_STAGES.length;
+function StageStepper({ stage: reached }: { stage: DealStage }) {
+  // A Won Deal is past every open Stage. A Lost one doesn't keep how far it got.
+  const current = isOpenStage(reached) ? OPEN_STAGES.indexOf(reached) : reached === "Won" ? OPEN_STAGES.length : -1;
   return (
     <ol className="grid grid-cols-5 gap-1.5" aria-label="Stage progress">
       {OPEN_STAGES.map((stage, index) => {
@@ -332,9 +362,25 @@ function StageStepper({ deal }: { deal: DealDetail }) {
   );
 }
 
+function LostBanner({ reason, on }: { reason: LostReason; on: string | null }) {
+  return (
+    <section aria-labelledby="lost-heading" className="flex items-start gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-4">
+      <CircleX className="mt-0.5 size-5 shrink-0 text-destructive" aria-hidden />
+      <div>
+        <h3 id="lost-heading" className="text-[15px] font-bold text-destructive">
+          Lost: {reason}
+        </h3>
+        {on && <p className="text-[13px] text-muted-foreground">On {longDay(on)}. To reopen it, pick an open Stage.</p>}
+      </div>
+    </section>
+  );
+}
+
+const RENEWAL_HEADING = { open: "Renews this Retainer", Won: "Renewed this Retainer", Lost: "Did not renew this Retainer" };
+
 /** What winning the Deal started, or the Retainer a Renewal is about. */
 function RetainerCard({ deal, retainer }: { deal: DealDetail; retainer: Retainer }) {
-  const heading = deal.kind === "New business" ? "Retainer" : deal.stage === "Won" ? "Renewed this Retainer" : "Renews this Retainer";
+  const heading = deal.kind === "New business" ? "Retainer" : RENEWAL_HEADING[isOpenStage(deal.stage) ? "open" : deal.stage];
   return (
     <section
       aria-labelledby="retainer-heading"
@@ -369,7 +415,9 @@ function NextStepCard({ deal, today }: { deal: DealDetail; today: string }) {
         <>
           <p className="mt-1 text-[17px] font-semibold">{next.text}</p>
           <p className={`mt-1 flex items-center gap-1 text-[13px] font-semibold ${next.overdue ? "text-destructive" : "text-muted-foreground"}`}>
-            <CalendarClock className="size-4" aria-hidden /> {dueLabel(next.due, today)}
+            <CalendarClock className="size-4" aria-hidden />
+            {/* A closed Deal's Next step isn't overdue, so it just says its day. */}
+            {isOpenStage(deal.stage) || !next.due ? dueLabel(next.due, today) : `Due ${longDay(next.due)}`}
           </p>
         </>
       ) : (

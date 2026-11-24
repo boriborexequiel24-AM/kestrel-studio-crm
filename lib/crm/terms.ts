@@ -13,9 +13,15 @@ export function daysFrom(from: Day, to: Day): number {
 
 export type DealStage = "New" | "Qualified" | "Discovery" | "Proposal sent" | "Negotiation" | "Won" | "Lost";
 export const DEAL_STAGES: readonly DealStage[] = ["New", "Qualified", "Discovery", "Proposal sent", "Negotiation", "Won", "Lost"];
-export type OpenStage = Exclude<DealStage, "Won" | "Lost">;
+export type ClosedStage = "Won" | "Lost";
+export const CLOSED_STAGES: readonly ClosedStage[] = ["Won", "Lost"];
+export type OpenStage = Exclude<DealStage, ClosedStage>;
 export const OPEN_STAGES: readonly OpenStage[] = ["New", "Qualified", "Discovery", "Proposal sent", "Negotiation"];
 export const isOpenStage = (stage: DealStage): stage is OpenStage => (OPEN_STAGES as readonly string[]).includes(stage);
+
+/** Why a Deal was Lost. */
+export type LostReason = "Price" | "Timing" | "Chose another agency" | "Went in-house" | "No response" | "Other";
+export const LOST_REASONS: readonly LostReason[] = ["Price", "Timing", "Chose another agency", "Went in-house", "No response", "Other"];
 
 export type DealKind = "New business" | "Renewal";
 

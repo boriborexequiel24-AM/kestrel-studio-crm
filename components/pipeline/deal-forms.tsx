@@ -8,6 +8,7 @@ import { ConfirmDeleteDialog, FormDialog } from "@/components/forms/form-dialog"
 import { Button } from "@/components/ui/button";
 import type { DealDetail } from "@/lib/crm";
 import { MAX_MONTHLY_DOLLARS } from "@/lib/crm/terms";
+import { choiceFields, type PipelineChoice } from "./pipeline-choice";
 
 type CompanyOption = { value: string; label: string };
 
@@ -92,7 +93,7 @@ export function NewDealButton({ options, mine }: { options: DealFormOptions; min
       description="New business, starting in New. Its Monthly value is an estimate until a Proposal is sent. To renew a Retainer, start from Retainers or the Company."
       action={createDeal}
       submitLabel="Add Deal"
-      hidden={mine ? { mine: "1" } : {}}
+      hidden={choiceFields({ mine, closed: false })}
     >
       <DealFields options={options} />
     </FormDialog>
@@ -148,7 +149,7 @@ export function EditDealButton({ deal, options }: { deal: EditableDeal; options:
   );
 }
 
-export function DeleteDealButton({ deal, mine }: { deal: { id: string; title: string }; mine: boolean }) {
+export function DeleteDealButton({ deal, choice }: { deal: { id: string; title: string }; choice: PipelineChoice }) {
   return (
     <ConfirmDeleteDialog
       trigger={
@@ -160,7 +161,7 @@ export function DeleteDealButton({ deal, mine }: { deal: { id: string; title: st
       description="Its Activities stay on the Company's timeline."
       action={deleteDeal}
       confirmLabel="Delete Deal"
-      hidden={mine ? { dealId: deal.id, mine: "1" } : { dealId: deal.id }}
+      hidden={{ dealId: deal.id, ...choiceFields(choice) }}
     />
   );
 }

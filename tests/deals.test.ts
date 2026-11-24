@@ -222,11 +222,10 @@ describe("moving a Deal between Stages", () => {
     expect(board.deals.find((d) => d.id === deal.id)?.stage).toBe("Discovery");
   });
 
-  it("can't move to Lost yet, or to a Stage that doesn't exist", async () => {
+  it("can't move to a Stage that doesn't exist", async () => {
     const { crm } = await visitorWithSandbox();
     const deal = await newDeal(crm);
 
-    expect(await crm.deals.moveToStage(deal.id, "Lost", { today: utcDay() })).toEqual({ ok: false, error: "stage_not_available" });
     expect(await crm.deals.moveToStage(deal.id, "Pending" as never, { today: utcDay() })).toEqual({ ok: false, error: "stage_unknown" });
     expect(await crm.deals.moveToStage(crypto.randomUUID(), "Qualified", { today: utcDay() })).toEqual({ ok: false, error: "not_found" });
   });

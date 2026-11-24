@@ -2,14 +2,15 @@
 
 import { redirect } from "next/navigation";
 import type { FormState } from "@/components/forms/form-state";
-import type { DealStage } from "@/lib/crm";
+import { choiceQuery, readChoice } from "@/components/pipeline/pipeline-choice";
+import type { DealStage, LostReason } from "@/lib/crm";
 import { getCrm } from "@/lib/crm/server";
 import { formText as text, toFormState } from "@/lib/form-results";
 import { visitorToday } from "@/lib/visitor-day";
 
-/** Keeps the Pipeline's Mine / Everyone choice across a redirect. */
-function mineQuery(form: FormData) {
-  return text(form, "mine") === "1" ? "?mine=1" : "";
+/** Keeps what the Pipeline was showing across a redirect. */
+function pipelineQuery(form: FormData) {
+  return choiceQuery(readChoice((name) => text(form, name)));
 }
 
 /** Empty or non-numeric text becomes NaN, which the CRM module refuses with the right message. */
@@ -33,7 +34,7 @@ export async function createDeal(_state: FormState, form: FormData): Promise<For
   const retainerId = text(form, "renewsRetainerId");
   const renews = retainerId ? { retainerId, today: await visitorToday() } : undefined;
   const created = await crm.deals.create({ ...dealFields(form), renews });
-  if (created.ok) redirect(`/deals/${created.value.id}${mineQuery(form)}`);
+  if (created.ok) redirect(`/deals/${created.value.id}${pipelineQuery(form)}`);
   return toFormState(created, form);
 }
 
@@ -45,13 +46,17 @@ export async function updateDeal(_state: FormState, form: FormData): Promise<For
 export async function deleteDeal(_state: FormState, form: FormData): Promise<FormState> {
   const crm = await getCrm();
   const deleted = await crm.deals.delete(text(form, "dealId"));
-  if (deleted.ok || deleted.error === "not_found") redirect(`/pipeline${mineQuery(form)}`);
+  if (deleted.ok || deleted.error === "not_found") redirect(`/pipeline${pipelineQuery(form)}`);
   return toFormState(deleted, form);
 }
 
 export async function moveDeal(_state: FormState, form: FormData): Promise<FormState> {
   const crm = await getCrm();
-  const move = { today: await visitorToday(), proposalVersion: Number(text(form, "proposalVersion")) || undefined };
+  const move = {
+    today: await visitorToday(),
+    proposalVersion: Number(text(form, "proposalVersion")) || undefined,
+    lostReason: (text(form, "lostReason") || undefined) as LostReason | undefined,
+  };
   return toFormState(await crm.deals.moveToStage(text(form, "dealId"), text(form, "stage") as DealStage, move), form);
 }
 

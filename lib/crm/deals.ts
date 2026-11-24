@@ -20,7 +20,20 @@ import { PROPOSAL_COLUMNS, monthlyTotal, toProposal, type Proposal } from "./pro
 import { RETAINER_COLUMNS, companyStatus, toRetainer, type Retainer } from "./retainers";
 import { listTeam, type Owner } from "./team";
 import type { PostgrestError } from "@supabase/supabase-js";
-import { DEAL_STAGES, OPEN_STAGES, isOpenStage, type CompanyStatus, type Day, type DealKind, type DealStage, type OpenStage, type ProposalStatus } from "./terms";
+import {
+  CLOSED_STAGES,
+  DEAL_STAGES,
+  LOST_REASONS,
+  OPEN_STAGES,
+  isOpenStage,
+  type CompanyStatus,
+  type Day,
+  type DealKind,
+  type DealStage,
+  type LostReason,
+  type OpenStage,
+  type ProposalStatus,
+} from "./terms";
 
 export type NextStep = { text: string; due: Day | null; overdue: boolean };
 
@@ -37,6 +50,10 @@ export type DealCard = {
   company: { id: string; name: string };
   owner: OwnerRef;
   nextStep: NextStep | null;
+  /** Why it was Lost; null unless it was. */
+  lostReason: LostReason | null;
+  /** The day it was Won or Lost, in the visitor's calendar; null while it's open. */
+  closedOn: Day | null;
 };
 
 /** A Deal with everything its panel shows. */
@@ -82,7 +99,10 @@ export type DealInput = {
 /** A new Deal is New business, unless it names the Retainer it renews. */
 export type NewDealInput = DealInput & { renews?: { retainerId: string; today: Day } };
 
-export const DEAL_COLUMNS = `id, title, kind, renews_retainer_id, stage, estimated_monthly_value, next_step, next_step_due,
+/** What a move to another Stage needs: Won the Proposal version confirmed, Lost its reason. */
+export type StageMove = { today: Day; proposalVersion?: number; lostReason?: LostReason };
+
+export const DEAL_COLUMNS = `id, title, kind, renews_retainer_id, stage, estimated_monthly_value, next_step, next_step_due, lost_reason, closed_on,
   company:companies!inner(id, name), owner:teammates!inner(${OWNER_REF_COLUMNS}),
   proposals(version, status, line_items:proposal_line_items(monthly_fee))`;
 
@@ -96,8 +116,29 @@ export function dealsArea({ db, inLiveSandbox }: CrmContext) {
   async function win(id: string, { today, proposalVersion }: { today: Day; proposalVersion?: number }) {
     const { error } = await db.rpc("win_deal", { deal: id, today, proposal_version: proposalVersion });
     if (!error) return ok(undefined);
-    const rule = ruleBroken(error, "not_found", "deal_already_won", "won_needs_sent_proposal", "proposal_changed");
+    const rule = ruleBroken(error, "not_found", "deal_already_won", "won_needs_sent_proposal", "proposal_changed", "renewal_already_open");
     return rule ? fail(rule) : unexpected(error);
+  }
+
+  /** Moves a Deal to an open Stage. A Lost one loses its reason. */
+  async function open(id: string, stage: OpenStage) {
+    const { data, error } = await db.from("deals").update({ stage, lost_reason: null, closed_on: null }).eq("id", id).select("id");
+    if (error?.message.includes("deals_one_open_renewal")) return fail("renewal_already_open");
+    if (error) return fail(ruleBroken(error, "deal_already_won") ?? unexpected(error));
+    return data.length ? ok(undefined) : fail("not_found");
+  }
+
+  async function lose(id: string, { today, lostReason }: StageMove) {
+    if (!lostReason || !LOST_REASONS.includes(lostReason)) return fail("lost_reason_required");
+    const { data, error } = await db
+      .from("deals")
+      .update({ stage: "Lost", lost_reason: lostReason, closed_on: today })
+      .eq("id", id)
+      .neq("stage", "Lost")
+      .select("id");
+    if (error) return fail(ruleBroken(error, "deal_already_won") ?? unexpected(error));
+    if (data.length) return ok(undefined);
+    return fail((await findDeal(id)) ? "deal_already_lost" : "not_found");
   }
 
   /** What makes a new Deal a Renewal, if it is one. Its Company is checked by the database. */
@@ -203,25 +244,27 @@ export function dealsArea({ db, inLiveSandbox }: CrmContext) {
      * Moves a Deal to a Stage. Won accepts its Sent Proposal and starts the
      * Retainer (or extends it, for a Renewal), all in one step, and is final:
      * pass the Proposal version that was confirmed, and any other is refused.
-     * Lost comes with Lost reasons.
+     * Lost needs a Lost reason, and can be undone by moving to an open Stage.
      */
-    moveToStage: (id: string, stage: DealStage, move: { today: Day; proposalVersion?: number }) =>
+    moveToStage: (id: string, stage: DealStage, move: StageMove) =>
       inLiveSandbox(async () => {
         if (!DEAL_STAGES.includes(stage)) return fail("stage_unknown");
         if (!isId(id)) return fail("not_found");
         if (stage === "Won") return win(id, move);
-        if (!isOpenStage(stage)) return fail("stage_not_available");
-        const { data, error } = await db.from("deals").update({ stage }).eq("id", id).select("id");
-        if (error) return fail(ruleBroken(error, "deal_already_won") ?? unexpected(error));
-        return data.length ? ok(undefined) : fail("not_found");
+        return isOpenStage(stage) ? open(id, stage) : lose(id, move);
       }),
   };
 }
 
+/** Whose Deals the Pipeline shows, on the visitor's own today. */
+export type PipelineScope = { today: Day; owners: "everyone" | "mine" };
+
+const inScope = (team: Owner[], { owners }: PipelineScope) => team.filter((owner) => owners === "everyone" || owner.isPersona);
+
 export function pipelineArea({ db, inLiveSandbox }: CrmContext) {
   return {
     /** Open Deals in an Owner x Stage grid, with totals. "mine" keeps only the Persona's. */
-    board: (view: { today: Day; owners: "everyone" | "mine" }) =>
+    board: (view: PipelineScope) =>
       inLiveSandbox(async () => {
         const [team, deals, won] = await Promise.all([
           listTeam(db),
@@ -236,7 +279,7 @@ export function pipelineArea({ db, inLiveSandbox }: CrmContext) {
         if (deals.error) unexpected(deals.error);
         if (won.error) unexpected(won.error);
 
-        const owners = team.filter((owner) => view.owners === "everyone" || owner.isPersona);
+        const owners = inScope(team, view);
         const ownerIds = new Set(owners.map((owner) => owner.id));
         const toCards = (rows: typeof deals.data) =>
           rows.map((row) => toCard(row, view.today)).filter((card) => ownerIds.has(card.owner.id));
@@ -259,6 +302,18 @@ export function pipelineArea({ db, inLiveSandbox }: CrmContext) {
           owners: owners.map((owner) => ({ owner, monthlyValue: sum(cards.filter((card) => card.owner.id === owner.id)) })),
           deals: cards,
         });
+      }),
+
+    /** Won and Lost Deals, the latest first. "mine" keeps only the Persona's. */
+    closed: (view: PipelineScope) =>
+      inLiveSandbox(async () => {
+        const [team, deals] = await Promise.all([
+          listTeam(db),
+          db.from("deals").select(DEAL_COLUMNS).in("stage", [...CLOSED_STAGES]).order("closed_on", { ascending: false }).order("title").order("id"),
+        ]);
+        if (deals.error) unexpected(deals.error);
+        const ownerIds = new Set(inScope(team, view).map((owner) => owner.id));
+        return ok(deals.data.map((row) => toCard(row, view.today)).filter((card) => ownerIds.has(card.owner.id)));
       }),
   };
 }
@@ -317,6 +372,8 @@ type DealRow = {
   estimated_monthly_value: number;
   next_step: string;
   next_step_due: string | null;
+  lost_reason: LostReason | null;
+  closed_on: string | null;
   company: { id: string; name: string };
   owner: { id: string; first_name: string; last_name: string; initials: string };
   proposals: { version: number; status: ProposalStatus; line_items: { monthly_fee: number }[] }[];
@@ -342,7 +399,13 @@ export function toCard(row: DealRow, today: Day): DealCard {
     company: row.company,
     owner: toOwnerRef(row.owner),
     nextStep: row.next_step
-      ? { text: row.next_step, due: row.next_step_due, overdue: row.next_step_due !== null && row.next_step_due < today }
+      ? {
+          text: row.next_step,
+          due: row.next_step_due,
+          overdue: isOpenStage(row.stage) && row.next_step_due !== null && row.next_step_due < today,
+        }
       : null,
+    lostReason: row.lost_reason,
+    closedOn: row.closed_on,
   };
 }

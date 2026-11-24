@@ -189,6 +189,18 @@ workflow demo.
   stale tab must not undo a won Renewal. End dates can't be set past the year 2200.
 - **The win confirm says "extend the Retainer" for a Renewal** (decided 2026-11-24). Same rules as
   other wins; "start" would be wrong.
+- **A Lost Deal can be reopened to any open Stage after a confirm, or won if its Proposal is accepted**
+  (decided 2026-11-24). It loses its Lost reason then; the Stage it was lost from isn't kept, so its
+  stepper shows none done.
+- **A Deal is Lost once, on the visitor's own day** (decided 2026-11-24). A second, stale move to Lost
+  is refused, so the reason and day stay true.
+- **A Lost Renewal can't be reopened or won while its Retainer has another open** (decided
+  2026-11-24). Keeps one Renewal per Retainer.
+- **Next steps on closed Deals never count as overdue** (decided 2026-11-24). Nothing is waiting.
+- **The Open / Closed choice lives in the link, like Mine / Everyone** (decided 2026-11-24). It
+  survives opening a Deal and coming back.
+- **Sample Activities that explain a loss sit two days before it** (decided 2026-11-24). Moments shift
+  by the hour and days by the day, so the same day could end up in the wrong order.
 
 ## Open questions
 - A proper logo mark (the prototype's is a placeholder).

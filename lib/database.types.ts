@@ -103,14 +103,14 @@ isOneToOne: false
                   ]
                 },"deals": {
                   Row: {
-                    "closed_on": string | null,"company_id": string,"created_at": string,"estimated_monthly_value": number,"id": string,"kind": Database["crm"]['Enums']["deal_kind"],"next_step": string,"next_step_due": string | null,"owner_id": string,"renews_retainer_id": string | null,"sandbox_id": string,"stage": Database["crm"]['Enums']["deal_stage"],"title": string
+                    "closed_on": string | null,"company_id": string,"created_at": string,"estimated_monthly_value": number,"id": string,"kind": Database["crm"]['Enums']["deal_kind"],"lost_reason": Database["crm"]['Enums']["lost_reason"] | null,"next_step": string,"next_step_due": string | null,"owner_id": string,"renews_retainer_id": string | null,"sandbox_id": string,"stage": Database["crm"]['Enums']["deal_stage"],"title": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "closed_on"?: string | null,"company_id": string,"created_at"?: string,"estimated_monthly_value": number,"id"?: string,"kind"?: Database["crm"]['Enums']["deal_kind"],"next_step"?: string,"next_step_due"?: string | null,"owner_id": string,"renews_retainer_id"?: string | null,"sandbox_id"?: string,"stage"?: Database["crm"]['Enums']["deal_stage"],"title": string
+                    "closed_on"?: string | null,"company_id": string,"created_at"?: string,"estimated_monthly_value": number,"id"?: string,"kind"?: Database["crm"]['Enums']["deal_kind"],"lost_reason"?: Database["crm"]['Enums']["lost_reason"] | null,"next_step"?: string,"next_step_due"?: string | null,"owner_id": string,"renews_retainer_id"?: string | null,"sandbox_id"?: string,"stage"?: Database["crm"]['Enums']["deal_stage"],"title": string
                   }
                   Update: {
-                    "closed_on"?: string | null,"company_id"?: string,"created_at"?: string,"estimated_monthly_value"?: number,"id"?: string,"kind"?: Database["crm"]['Enums']["deal_kind"],"next_step"?: string,"next_step_due"?: string | null,"owner_id"?: string,"renews_retainer_id"?: string | null,"sandbox_id"?: string,"stage"?: Database["crm"]['Enums']["deal_stage"],"title"?: string
+                    "closed_on"?: string | null,"company_id"?: string,"created_at"?: string,"estimated_monthly_value"?: number,"id"?: string,"kind"?: Database["crm"]['Enums']["deal_kind"],"lost_reason"?: Database["crm"]['Enums']["lost_reason"] | null,"next_step"?: string,"next_step_due"?: string | null,"owner_id"?: string,"renews_retainer_id"?: string | null,"sandbox_id"?: string,"stage"?: Database["crm"]['Enums']["deal_stage"],"title"?: string
                   }
                   Relationships: [
                     {
@@ -331,7 +331,7 @@ isOneToOne: false
                            }
           }
           Enums: {
-            "activity_kind": "Email"|"Call"|"Meeting"|"Note","deal_kind": "New business"|"Renewal","deal_stage": "New"|"Qualified"|"Discovery"|"Proposal sent"|"Negotiation"|"Won"|"Lost","proposal_status": "Draft"|"Sent"|"Accepted"|"Declined"
+            "activity_kind": "Email"|"Call"|"Meeting"|"Note","deal_kind": "New business"|"Renewal","deal_stage": "New"|"Qualified"|"Discovery"|"Proposal sent"|"Negotiation"|"Won"|"Lost","lost_reason": "Price"|"Timing"|"Chose another agency"|"Went in-house"|"No response"|"Other","proposal_status": "Draft"|"Sent"|"Accepted"|"Declined"
           }
           CompositeTypes: {
             [_ in never]: never
@@ -447,7 +447,7 @@ export type CompositeTypes<
 export const Constants = {
   "crm": {
           Enums: {
-            "activity_kind": ["Email", "Call", "Meeting", "Note"],"deal_kind": ["New business", "Renewal"],"deal_stage": ["New", "Qualified", "Discovery", "Proposal sent", "Negotiation", "Won", "Lost"],"proposal_status": ["Draft", "Sent", "Accepted", "Declined"]
+            "activity_kind": ["Email", "Call", "Meeting", "Note"],"deal_kind": ["New business", "Renewal"],"deal_stage": ["New", "Qualified", "Discovery", "Proposal sent", "Negotiation", "Won", "Lost"],"lost_reason": ["Price", "Timing", "Chose another agency", "Went in-house", "No response", "Other"],"proposal_status": ["Draft", "Sent", "Accepted", "Declined"]
           }
         }
 } as const

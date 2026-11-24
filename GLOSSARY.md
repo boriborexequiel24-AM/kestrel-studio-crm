@@ -42,6 +42,10 @@ _Avoid_: Closed, Signed
 The Stage a Deal reaches when the Company will not go ahead, always with a Lost reason.
 _Avoid_: Closed, Dead
 
+**Closed**:
+A Deal that is Won or Lost, so no longer open. Say Won or Lost when only one is meant.
+_Avoid_: Done, Finished
+
 **Lost reason**:
 Why a Deal was Lost: Price, Timing, Chose another agency, Went in-house, No response or Other.
 _Avoid_: Loss code, Churn reason

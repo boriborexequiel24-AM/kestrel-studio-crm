@@ -55,8 +55,28 @@ export function FormError({ state }: { state: FormState }) {
   );
 }
 
+/** For a dialog opened by something other than its own trigger, such as picking Won from a list of Stages. */
+export type Opened = { open: boolean; onOpenChange: (open: boolean) => void; returnFocusTo: RefObject<HTMLElement | null> };
+
+/** A dialog's open state: its own, or `opened` from outside. */
+function useOpen(opened: Opened | undefined) {
+  const [openedHere, setOpenedHere] = useState(false);
+
+  // Without a trigger of its own, the dialog can't tell where focus came from.
+  // If that's gone (a Won Deal leaves the Pipeline), the page itself takes it.
+  function returnFocus(event: Event) {
+    if (!opened) return;
+    event.preventDefault();
+    const from = opened.returnFocusTo.current;
+    (from?.isConnected ? from : document.querySelector<HTMLElement>("main"))?.focus();
+  }
+
+  return { open: opened?.open ?? openedHere, setOpen: opened?.onOpenChange ?? setOpenedHere, returnFocus };
+}
+
 type FormDialogProps = {
-  trigger: ReactNode;
+  trigger?: ReactNode;
+  opened?: Opened;
   title: string;
   description?: string;
   action: FormAction;
@@ -67,12 +87,12 @@ type FormDialogProps = {
 };
 
 /** A dialog with a form. It closes once the action saves; otherwise it shows why not. */
-export function FormDialog({ trigger, title, description, ...form }: FormDialogProps) {
-  const [open, setOpen] = useState(false);
+export function FormDialog({ trigger, opened, title, description, ...form }: FormDialogProps) {
+  const { open, setOpen, returnFocus } = useOpen(opened);
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+      {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg" onCloseAutoFocus={returnFocus}>
         <DialogHeader>
           <DialogTitle className="text-[20px] font-bold">{title}</DialogTitle>
           {description && <DialogDescription className="text-[14px]">{description}</DialogDescription>}
@@ -90,7 +110,7 @@ function DialogForm({
   children,
   onSaved,
   onCancel,
-}: Omit<FormDialogProps, "trigger" | "title" | "description"> & { onSaved: () => void; onCancel: () => void }) {
+}: Omit<FormDialogProps, "trigger" | "opened" | "title" | "description"> & { onSaved: () => void; onCancel: () => void }) {
   const [state, formAction, pending] = useDialogAction(action, onSaved);
   return (
     <FormStateContext value={state}>
@@ -113,8 +133,7 @@ function DialogForm({
 
 type ConfirmDialogProps = {
   trigger?: ReactNode;
-  /** For a dialog opened by something else, such as picking Won from a list of Stages. */
-  opened?: { open: boolean; onOpenChange: (open: boolean) => void; returnFocusTo: RefObject<HTMLElement | null> };
+  opened?: Opened;
   /** "destructive" (the default) for something lost, "positive" for good news. */
   tone?: "destructive" | "positive";
   title: string;
@@ -128,19 +147,7 @@ type ConfirmDialogProps = {
 
 /** Asks before something that can't be undone, such as a delete, Start over or winning a Deal. */
 export function ConfirmDialog({ trigger, opened, title, description, ...form }: ConfirmDialogProps) {
-  const [openedHere, setOpenedHere] = useState(false);
-  const open = opened?.open ?? openedHere;
-  const setOpen = opened?.onOpenChange ?? setOpenedHere;
-
-  // Without a trigger of its own, the dialog can't tell where focus came from.
-  // If that's gone (a Won Deal leaves the Pipeline), the page itself takes it.
-  function returnFocus(event: Event) {
-    if (!opened) return;
-    event.preventDefault();
-    const from = opened.returnFocusTo.current;
-    (from?.isConnected ? from : document.querySelector<HTMLElement>("main"))?.focus();
-  }
-
+  const { open, setOpen, returnFocus } = useOpen(opened);
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
       {trigger && <AlertDialogTrigger asChild>{trigger}</AlertDialogTrigger>}

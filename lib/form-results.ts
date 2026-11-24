@@ -44,14 +44,15 @@ const MESSAGES: Record<string, { message: string; field?: string }> = {
   proposal_changed: { message: "The Sent Proposal changed while you were deciding. Reload the page to see the new one." },
   deal_already_won: { message: "This Deal is already Won, and Won is final. Reload the page." },
   retainer_not_found: { message: "That Retainer isn't at this Company anymore. Reload the page." },
-  renewal_already_open: { message: "This Retainer already has an open Renewal. Reload the page to see it." },
+  renewal_already_open: { message: "This Retainer has another open Renewal. Win, lose or delete that one first." },
+  deal_already_lost: { message: "This Deal is already Lost. Reload the page to see why." },
   company_fixed_by_renewal: { message: "A Renewal stays at the Company whose Retainer it renews.", field: "companyId" },
   end_date_invalid: { message: "Pick a real end date.", field: "endDate" },
   end_date_too_far: { message: "Pick an end date no later than the year 2200.", field: "endDate" },
   end_date_changed: { message: "This Retainer's end date changed while you were editing. Reload the page to see it.", field: "endDate" },
   retainer_ended: { message: "This Retainer has ended. Start a new Deal instead." },
   end_before_start: { message: "A Retainer can't end before it starts.", field: "endDate" },
-  stage_not_available: { message: "That Stage isn't available for this Deal yet.", field: "stage" },
+  lost_reason_required: { message: "Pick a Lost reason.", field: "lostReason" },
 };
 
 /**

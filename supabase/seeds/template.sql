@@ -43,8 +43,7 @@ insert into crm.teammates (sandbox_id, id, first_name, last_name, role, initials
   (pg_temp.template(), pg_temp.teammate(4), 'Jonas', 'Webb', 'Performance Lead', 'JW', false),
   (pg_temp.template(), pg_temp.teammate(5), 'Ines', 'Calloway', 'Creative Director', 'IC', false);
 
--- 40 Companies. The first block are Clients
--- (ticket 07); the rest are Prospects, most with Deals from ticket 05.
+-- 40 Companies. The first block are Clients; the rest are Prospects, most with a Deal.
 insert into crm.companies (sandbox_id, id, name, industry, city, owner_id, added_at)
 select pg_temp.template(), pg_temp.company(v.n), v.name, v.industry, v.city, pg_temp.teammate(v.owner), pg_temp.before_anchor(v.days_ago, 15)
   from (values
@@ -295,7 +294,7 @@ select pg_temp.template(), pg_temp.activity(v.ord), pg_temp.company(v.company),
     (24, 2, 1, 'Email', 22, 21, 'Luis shared the retailer calendar for the next shelf resets.'),
     (24, 1, 1, 'Call', 35, 18, 'First call with Megan, referred by Wrenfield Tea.'),
     -- Corbel Lane Property Group (Prospect, Wendell)
-    (25, 1, 3, 'Email', 28, 15, 'Sharon asked us to hold off until their new fiscal year.'),
+    (25, 1, 3, 'Email', 28, 15, 'Third message to Sharon since the leasing walkthrough, and no answer. Letting it go.'),
     (25, 2, 3, 'Call', 60, 19, 'Tyler walked us through their leasing funnel. Lots of leads, few tours.'),
     (25, 1, 3, 'Meeting', 95, 17, 'Met Sharon at the Dallas apartment association expo.'),
     -- Quillon Mobility (Prospect, Theo)
@@ -448,13 +447,13 @@ select v.*, (v.anchor_day + v.last_day + 1 - make_interval(months => v.term))::d
         (105, 9, 1, 'DTC growth and subscriptions', 12, 41, 'Grow subscriptions and repeat orders.', 'Paid social', 4600, 'Subscription tests', 2800),
         (106, 10, 2, 'Wine club and events', 12, 55, 'Fill the wine club and the event calendar.', 'Wine club campaigns', 3200, 'Event promotion', 2000),
         (107, 11, 4, 'New patient search', 12, 120, 'New patient bookings for 11 clinics.', 'Local search ads', 8300, 'Clinic pages', 3500),
-        (108, 12, 5, 'Store and email', 12, 210, 'Email flows and seasonal creative.', 'Email and flows', 2600, 'Campaign creative', 2200),
+        (108, 12, 5, 'Store and email', 12, 270, 'Email flows and seasonal creative.', 'Email and flows', 2600, 'Campaign creative', 2200),
         (109, 12, 5, 'Influencer seeding', 6, 170, 'Seed each scent launch with 40 creators.', 'Creator seeding', 1900, 'Reporting', 700),
         (110, 13, 1, 'Member growth', 12, 33, 'New members for eight branches.', 'Brand campaign', 5400, 'Branch marketing', 3500),
         (111, 14, 3, 'Online store ads', 9, 24, 'Paid search and product ads for the online store.', 'Product ads', 4400, 'Catalog creative', 2500),
         (112, 15, 5, 'Brand and local marketing', 12, 95, 'One warm brand across seven shops.', 'Brand and print', 2500, 'Local social', 1800),
         (113, 16, 1, 'Local search and reviews', 12, 165, 'More appointments from search, and more reviews.', 'Local search', 3600, 'Reviews and video', 2000),
-        (114, 17, 4, 'Try-on campaign and paid social', 12, 230, 'Home try-on, from ad to purchase.', 'Paid social', 6100, 'Creative refresh', 3200),
+        (114, 17, 4, 'Try-on campaign and paid social', 12, 300, 'Home try-on, from ad to purchase.', 'Paid social', 6100, 'Creative refresh', 3200),
         (115, 17, 4, 'TikTok Shop test', 3, 89, 'A three-month test for the new acetate frames.', 'TikTok Shop', 2100, 'Creator content', 1000)
       ) as w (n, company, owner, title, term, last_day, scope, service_1, fee_1, service_2, fee_2)
   ) as v;
@@ -479,6 +478,47 @@ select pg_temp.template(), pg_temp.retainer(n), pg_temp.company(company), pg_tem
        fee_1 + fee_2, start_date, crm.last_day(start_date, term)
   from sample_retainers;
 
+-- 9 Lost Deals over recent months, with every Lost reason. Three are the only
+-- Deal of a Prospect; the rest were extra work for a Client.
+insert into crm.deals (sandbox_id, id, company_id, owner_id, title, kind, stage, estimated_monthly_value,
+                       created_at, closed_on, lost_reason)
+select pg_temp.template(), pg_temp.deal(v.n), c.id, pg_temp.teammate(v.owner), v.title, 'New business', 'Lost', v.value,
+       greatest(pg_temp.before_anchor(v.opened_days_ago, 15), c.added_at + interval '1 hour'),
+       (select (created_at at time zone 'utc')::date from crm.sandboxes where is_template) - v.lost_days_ago,
+       v.reason::crm.lost_reason
+  from (values
+    (301, 31, 2, 'Prescription transfer campaign', 5800, 130, 18, 'Timing'),
+    (302, 39, 5, 'Bridal appointments campaign', 4200, 120, 20, 'Went in-house'),
+    (303, 25, 3, 'Leasing funnel rebuild', 8800, 110, 26, 'No response'),
+    (304, 14, 3, 'Spokane store opening', 6400, 54, 40, 'Chose another agency'),
+    (305, 11, 4, 'Mesa clinics launch', 7800, 60, 45, 'Price'),
+    (306, 4, 2, 'Event spaces campaign', 5200, 95, 64, 'Timing'),
+    (307, 9, 1, 'Wholesale launch kit', 4800, 120, 88, 'Price'),
+    (308, 13, 1, 'Branch signage refresh', 3800, 150, 109, 'Chose another agency'),
+    (309, 10, 2, 'Label redesign', 4400, 170, 131, 'Other')
+  ) as v (n, company, owner, title, value, opened_days_ago, lost_days_ago, reason)
+  join crm.companies c on c.sandbox_id = pg_temp.template() and c.id = pg_temp.company(v.company);
+
+insert into crm.proposals (sandbox_id, id, deal_id, version, status, scope_summary, term_months, created_at, sent_at)
+select pg_temp.template(), pg_temp.proposal(v.deal, 1), pg_temp.deal(v.deal), 1, 'Declined', v.scope, v.term,
+       pg_temp.before_anchor(v.sent_days_ago + 1, 16), pg_temp.before_anchor(v.sent_days_ago, 18)
+  from (values
+    (304, 48, 6, 'Opening ads and local search for the Spokane store.'),
+    (305, 52, 12, 'Local search and clinic pages for the two Mesa clinics.'),
+    (307, 99, 6, 'A sell-in kit and trade ads for wholesale buyers.')
+  ) as v (deal, sent_days_ago, term, scope);
+
+insert into crm.proposal_line_items (sandbox_id, proposal_id, position, service, monthly_fee)
+select pg_temp.template(), pg_temp.proposal(v.deal, 1), v.position, v.service, v.fee
+  from (values
+    (304, 1, 'Opening campaign', 4400),
+    (304, 2, 'Local search', 2000),
+    (305, 1, 'Local search ads', 5200),
+    (305, 2, 'Clinic pages', 2600),
+    (307, 1, 'Sell-in kit', 2800),
+    (307, 2, 'Trade ads', 2000)
+  ) as v (deal, position, service, fee);
+
 -- A Prospect's Activities are all about its one Deal. A Client's, so far, are
 -- ongoing work and not about a Deal.
 update crm.activities a
@@ -495,7 +535,7 @@ select pg_temp.template(), pg_temp.activity(500 + v.ord), pg_temp.company(r.comp
   from (select row_number() over () as ord, w.* from (values
     (101, 1, 'Meeting', 5, 18, 'Went through the Proposal with Rosa line by line. Loyalty first, paid social beside it.'),
     (102, 1, 'Call', 6, 17, 'Rosa wants every new cafe to open with its own launch plan. The Proposal covers it.'),
-    (102, 1, 'Email', 1, 20, 'Rosa has sign-off on the new cafe openings. She will confirm the Proposal tomorrow.'),
+    (102, 1, 'Email', 1, 20, 'Rosa has sign-off on the new cafe openings. She will confirm the Proposal in a day or two.'),
     (103, 1, 'Meeting', 6, 16, 'Presented the direct booking plan to Claire. She likes that search and photography work together.'),
     (103, 2, 'Email', 1, 19, 'Marcus has the budget approved for direct booking growth.'),
     (104, 1, 'Call', 4, 18, 'Nina accepted the fee for membership growth and asked for a video series in the plan.'),
@@ -567,6 +607,21 @@ select pg_temp.template(), pg_temp.activity(600 + v.ord), pg_temp.company(r.comp
   ) as w (deal, contact, kind, days_ago, hour, text)) as v
   join sample_renewals r on r.n = v.deal;
 
+-- Why each Client's Deal was Lost, two days before it was: moments shift by the
+-- hour and days by the day, so the same day could end up in the wrong order.
+insert into crm.activities (sandbox_id, id, company_id, contact_id, deal_id, author_id, kind, occurred_at, text)
+select d.sandbox_id, pg_temp.activity(700 + v.ord), d.company_id, pg_temp.contact(v.company, v.contact), d.id, d.owner_id,
+       v.kind::crm.activity_kind, (d.closed_on - 2 + v.hour * interval '1 hour') at time zone 'utc', v.text
+  from (select row_number() over () as ord, w.* from (values
+    (304, 14, 1, 'Call', 20, 'Hannah picked a Spokane agency for the store opening. They wanted someone in town.'),
+    (305, 11, 1, 'Email', 17, 'Dr. Shah passed on the Mesa launch. Two new leases left no room for the fee.'),
+    (306, 4, 1, 'Call', 19, 'Claire is putting the event spaces behind the rebrand, with no date for them.'),
+    (307, 9, 2, 'Call', 18, 'Hiro turned down the wholesale kit. The fee was more than a first order would bring in.'),
+    (308, 13, 1, 'Email', 16, 'Denise went with a local agency that also makes the signs. We stay on the campaigns.'),
+    (309, 10, 2, 'Call', 21, 'Graham shelved the label redesign after a change of mind in the family.')
+  ) as w (deal, company, contact, kind, hour, text)) as v
+  join crm.deals d on d.sandbox_id = pg_temp.template() and d.id = pg_temp.deal(v.deal);
+
 -- Every sample date must be before the anchor, or a fresh Sandbox would show
 -- Activities in the future. Refuse to load a Template that breaks this.
 do $$
@@ -592,6 +647,16 @@ begin
     select 1 from crm.retainers r join crm.sandboxes t on t.id = r.sandbox_id
      where t.is_template
        and (t.created_at at time zone 'utc')::date not between r.start_date and r.end_date
+  ) or exists (
+    -- Nor may a Deal be talked about as it was Lost, or after.
+    select 1 from crm.activities a join crm.sandboxes t on t.id = a.sandbox_id
+      join crm.deals d on d.sandbox_id = a.sandbox_id and d.id = a.deal_id
+     where t.is_template and d.stage = 'Lost' and (a.occurred_at at time zone 'utc')::date > d.closed_on - 2
+  ) or exists (
+    -- Nor may a Deal close before it opened, or after the anchor.
+    select 1 from crm.deals d join crm.sandboxes t on t.id = d.sandbox_id
+     where t.is_template
+       and d.closed_on not between (d.created_at at time zone 'utc')::date and (t.created_at at time zone 'utc')::date
   ) or exists (
     -- Nor may a Deal be older than its Company.
     select 1 from crm.deals d join crm.sandboxes t on t.id = d.sandbox_id
