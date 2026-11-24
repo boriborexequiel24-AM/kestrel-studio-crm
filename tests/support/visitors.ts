@@ -5,7 +5,8 @@ import { createFakeAiProvider } from "@/lib/ai/fake";
 import type { Database } from "@/lib/database.types";
 import { utcDay } from "./days";
 
-export const TEST_LIMITS = { sandboxesPerIpPerDay: 5, ipHashSalt: "test-salt" };
+// The demo-wide AI cap is the database's own ceiling, so earlier test runs today don't use it up.
+export const TEST_LIMITS = { sandboxesPerIpPerDay: 5, ipHashSalt: "test-salt", aiActionsPerSandbox: 30, aiActionsPerDay: 10_000 };
 
 /**
  * A fresh browser-less visitor: their own Supabase client (no session yet),
@@ -15,7 +16,7 @@ export const TEST_LIMITS = { sandboxesPerIpPerDay: 5, ipHashSalt: "test-salt" };
  * `db` is the visitor's raw client, for tests that act like someone poking the
  * API directly with their own session.
  */
-export function newVisitor(options: { ip?: string; sandboxesPerIpPerDay?: number } = {}) {
+export function newVisitor(options: { ip?: string } & Partial<typeof TEST_LIMITS> = {}) {
   const { url, anonKey } = inject("localStack");
   const db: CrmSupabaseClient = createClient<Database>(url, anonKey, {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },

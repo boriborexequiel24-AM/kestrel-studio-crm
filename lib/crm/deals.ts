@@ -18,6 +18,7 @@ import {
 } from "./core";
 import { PROPOSAL_COLUMNS, monthlyTotal, toProposal, type Proposal } from "./proposals";
 import { RETAINER_COLUMNS, companyStatus, toRetainer, type Retainer } from "./retainers";
+import { SEEN_COLUMNS, SUMMARY_COLUMNS, toSeen, toSummary, type Summary } from "./summaries";
 import { listTeam, type Owner } from "./team";
 import type { PostgrestError } from "@supabase/supabase-js";
 import {
@@ -66,6 +67,8 @@ export type DealDetail = DealCard & {
   proposals: Proposal[];
   /** The Retainer a Renewal renews, or the one this Deal started, once it's Won. */
   retainer: Retainer | null;
+  /** What the AI last wrote about its Company, if anything. */
+  summary: Summary | null;
   /** Why the Deal's Company can't change: it renews that Company's Retainer, has Activities, or a Proposal was sent. */
   companyFixedBy: "Renewal" | "Activities" | "Proposal" | null;
 };
@@ -166,16 +169,20 @@ export function dealsArea({ db, inLiveSandbox }: CrmContext) {
         if (!isId(id)) return fail("not_found");
         const deal = await findDeal(id);
         if (!deal) return fail("not_found");
-        const [contacts, activities, proposals, retainers] = await Promise.all([
+        const [contacts, activities, proposals, retainers, summary, seen] = await Promise.all([
           db.from("contacts").select(CONTACT_COLUMNS).eq("company_id", deal.company.id).order("name"),
           db.from("activities").select(ACTIVITY_COLUMNS).eq("deal_id", id).order("occurred_at", { ascending: false }),
           db.from("proposals").select(PROPOSAL_COLUMNS).eq("deal_id", id).order("version", { ascending: false }),
           db.from("retainers").select(RETAINER_COLUMNS).eq("company_id", deal.company.id),
+          db.from("ai_summaries").select(SUMMARY_COLUMNS).eq("company_id", deal.company.id).maybeSingle(),
+          db.from("activities").select(SEEN_COLUMNS).eq("company_id", deal.company.id),
         ]);
         if (contacts.error) unexpected(contacts.error);
         if (activities.error) unexpected(activities.error);
         if (proposals.error) unexpected(proposals.error);
         if (retainers.error) unexpected(retainers.error);
+        if (summary.error) unexpected(summary.error);
+        if (seen.error) unexpected(seen.error);
         const card = toCard(deal, view.today);
         const retainer = retainers.data.find((each) => each.id === deal.renews_retainer_id || each.deal.id === id);
         return ok<DealDetail>({
@@ -186,6 +193,7 @@ export function dealsArea({ db, inLiveSandbox }: CrmContext) {
           activities: activities.data.map(toActivity),
           proposals: proposals.data.map(toProposal),
           retainer: retainer ? toRetainer(retainer, view.today) : null,
+          summary: toSummary(summary.data, seen.data.map(toSeen)),
           companyFixedBy: companyFixedBy(deal.kind, activities.data.length > 0, proposals.data.some((each) => each.sent_at !== null)),
         });
       }),

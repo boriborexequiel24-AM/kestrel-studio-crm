@@ -216,6 +216,23 @@ workflow demo.
 - **Home's Retainers link to their Company** (decided 2026-11-24). It shows the Retainer and its Renewal.
 - **Two sample Deals have no Next step, one of them Maya's** (decided 2026-11-24). The attention list
   shows both kinds.
+- **An AI action is counted before the provider is called, so a failed one still counts** (decided
+  2026-11-24). Otherwise a failing provider could be called without limit.
+- **AI usage rows outlive their Sandbox, with the Sandbox id cleared** (decided 2026-11-24). The
+  demo-wide limit must still count them, and cost per action has to stay measurable.
+- **The database holds its own ceilings: 50 AI actions per Sandbox and 10,000 a day** (decided
+  2026-11-24). The app passes the limits from `.env`; someone calling the API directly with the anon
+  key could reach these, but never the provider.
+- **The AI limit per Sandbox covers its whole 24 hours; the demo-wide one is per UTC day** (decided
+  2026-11-24). Start over keeps the count.
+- **A summary is out of date once the Company's Activities differ from the ones it covers** (decided
+  2026-11-24). New, edited or deleted; compared by a fingerprint, so a backdated Activity counts too.
+- **A summary is exactly three lines; a cut-off or shorter answer isn't saved** (decided 2026-11-24).
+- **What reaches the provider is capped: 12,000 characters in, 800 tokens out** (decided 2026-11-24).
+  Visitors can paste anything into their Sandbox.
+- **OpenAI is asked not to store anything (`store: false`)** (decided 2026-11-24). Prices for the cost
+  log are in `lib/ai/openai.ts`; a model not listed there logs no cost.
+- **The Summary card is on the Deal Sheet too** (decided 2026-11-24). The spec's look section has it.
 
 ## Open questions
 - A proper logo mark (the prototype's is a placeholder).
@@ -235,7 +252,8 @@ workflow demo.
 - `components/app/` : app frame (top bar, nav, logo, page header). `components/ui/` : shadcn.
 - `lib/crm/` : the CRM module, the one seam for data (`index.ts`), and `server.ts` to get it in
   a request (`getCrm`, `requireLiveSandbox`).
-- `lib/ai/` : AI provider interface, fake provider, `AI_PROVIDER` switch.
+- `lib/ai/` : AI provider interface, OpenAI and fake adapters, `AI_PROVIDER` switch. Prompts and limits
+  are in `lib/crm/ai.ts`.
 - `lib/supabase/` : the visitor's cookie-based Supabase client.
 - `lib/database.types.ts` : generated from the local database (`npm run db:types`).
 - `proxy.ts` : refreshes the Supabase session on each request.

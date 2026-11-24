@@ -49,6 +49,52 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"ai_summaries": {
+                  Row: {
+                    "activities_seen": string,"company_id": string,"lines": (string)[],"sandbox_id": string,"written_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "activities_seen": string,"company_id": string,"lines": (string)[],"sandbox_id"?: string,"written_at"?: string
+                  }
+                  Update: {
+                    "activities_seen"?: string,"company_id"?: string,"lines"?: (string)[],"sandbox_id"?: string,"written_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "ai_summaries_sandbox_id_company_id_fkey"
+      columns: ["sandbox_id","company_id"]
+isOneToOne: true
+      referencedRelation: "companies"
+      referencedColumns: ["sandbox_id","id"]
+    },{
+      foreignKeyName: "ai_summaries_sandbox_id_fkey"
+      columns: ["sandbox_id"]
+isOneToOne: false
+      referencedRelation: "sandboxes"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"ai_usage": {
+                  Row: {
+                    "cost_usd": number | null,"feature": Database["crm"]['Enums']["ai_feature"],"finished_at": string | null,"id": string,"input_tokens": number | null,"output_tokens": number | null,"sandbox_id": string | null,"started_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "cost_usd"?: number | null,"feature": Database["crm"]['Enums']["ai_feature"],"finished_at"?: string | null,"id"?: string,"input_tokens"?: number | null,"output_tokens"?: number | null,"sandbox_id"?: string | null,"started_at"?: string
+                  }
+                  Update: {
+                    "cost_usd"?: number | null,"feature"?: Database["crm"]['Enums']["ai_feature"],"finished_at"?: string | null,"id"?: string,"input_tokens"?: number | null,"output_tokens"?: number | null,"sandbox_id"?: string | null,"started_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "ai_usage_sandbox_id_fkey"
+      columns: ["sandbox_id"]
+isOneToOne: false
+      referencedRelation: "sandboxes"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"companies": {
                   Row: {
                     "added_at": string,"city": string,"id": string,"industry": string,"name": string,"owner_id": string,"sandbox_id": string
@@ -283,7 +329,10 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            "clean_up_expired_sandboxes":
+            "begin_ai_action":
+{ Args: { "daily_cap": number,"feature": Database["crm"]['Enums']["ai_feature"],"sandbox_limit": number }; Returns: string
+                           },
+"clean_up_expired_sandboxes":
 { Args: Record<PropertyKey, never>; Returns: number
                            },
 "current_sandbox_id":
@@ -297,6 +346,9 @@ isOneToOne: false
                            },
 "fill_sandbox":
 { Args: { "target": string,"today": string }; Returns: undefined
+                           },
+"finish_ai_action":
+{ Args: { "action": string,"cost_usd"?: number,"input_tokens": number,"output_tokens": number }; Returns: undefined
                            },
 "last_day":
 { Args: { "months": number,"start_date": string }; Returns: string
@@ -331,7 +383,7 @@ isOneToOne: false
                            }
           }
           Enums: {
-            "activity_kind": "Email"|"Call"|"Meeting"|"Note","deal_kind": "New business"|"Renewal","deal_stage": "New"|"Qualified"|"Discovery"|"Proposal sent"|"Negotiation"|"Won"|"Lost","lost_reason": "Price"|"Timing"|"Chose another agency"|"Went in-house"|"No response"|"Other","proposal_status": "Draft"|"Sent"|"Accepted"|"Declined"
+            "activity_kind": "Email"|"Call"|"Meeting"|"Note","ai_feature": "summary"|"draft"|"ask","deal_kind": "New business"|"Renewal","deal_stage": "New"|"Qualified"|"Discovery"|"Proposal sent"|"Negotiation"|"Won"|"Lost","lost_reason": "Price"|"Timing"|"Chose another agency"|"Went in-house"|"No response"|"Other","proposal_status": "Draft"|"Sent"|"Accepted"|"Declined"
           }
           CompositeTypes: {
             [_ in never]: never
@@ -447,7 +499,7 @@ export type CompositeTypes<
 export const Constants = {
   "crm": {
           Enums: {
-            "activity_kind": ["Email", "Call", "Meeting", "Note"],"deal_kind": ["New business", "Renewal"],"deal_stage": ["New", "Qualified", "Discovery", "Proposal sent", "Negotiation", "Won", "Lost"],"lost_reason": ["Price", "Timing", "Chose another agency", "Went in-house", "No response", "Other"],"proposal_status": ["Draft", "Sent", "Accepted", "Declined"]
+            "activity_kind": ["Email", "Call", "Meeting", "Note"],"ai_feature": ["summary", "draft", "ask"],"deal_kind": ["New business", "Renewal"],"deal_stage": ["New", "Qualified", "Discovery", "Proposal sent", "Negotiation", "Won", "Lost"],"lost_reason": ["Price", "Timing", "Chose another agency", "Went in-house", "No response", "Other"],"proposal_status": ["Draft", "Sent", "Accepted", "Declined"]
           }
         }
 } as const

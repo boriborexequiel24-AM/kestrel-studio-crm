@@ -1,6 +1,7 @@
 import "server-only";
 import type { AiProvider } from "@/lib/ai/provider";
 import { activitiesArea } from "./activities";
+import { aiArea, type AiLimits } from "./ai";
 import { companiesArea } from "./companies";
 import { contactsArea } from "./contacts";
 import { dealsArea, pipelineArea } from "./deals";
@@ -54,9 +55,11 @@ export type { ContactInput } from "./contacts";
 export type { LineItem, Proposal, ProposalInput } from "./proposals";
 export type { Retainer } from "./retainers";
 export type { HomeOverview } from "./home";
+export type { AiActionsLeft, AiLimits, AiRefusal } from "./ai";
+export type { Summary } from "./summaries";
 export type { ActivityFields, ActivityInput } from "./activities";
 
-export type CrmDeps = { ai?: AiProvider; limits: SandboxLimits };
+export type CrmDeps = { ai: AiProvider; limits: SandboxLimits & AiLimits };
 
 export function createCrm(supabase: CrmSupabaseClient, deps: CrmDeps) {
   const db = supabase.schema("crm");
@@ -65,10 +68,11 @@ export function createCrm(supabase: CrmSupabaseClient, deps: CrmDeps) {
   const context: CrmContext = { db, inLiveSandbox };
   const pipeline = pipelineArea(context);
   const retainers = retainersArea(context);
+  const companies = companiesArea(context);
   return {
     sandbox,
     team: teamArea(context),
-    companies: companiesArea(context),
+    companies,
     contacts: contactsArea(context),
     activities: activitiesArea(context),
     deals: dealsArea(context),
@@ -76,6 +80,7 @@ export function createCrm(supabase: CrmSupabaseClient, deps: CrmDeps) {
     proposals: proposalsArea(context),
     retainers,
     home: homeArea({ pipeline, retainers }),
+    ai: aiArea(context, { provider: deps.ai, limits: deps.limits, companies }),
   };
 }
 

@@ -7,9 +7,11 @@ export type FakeAiProvider = AiProvider & {
   script(...responses: Partial<AiResponse>[]): void;
 };
 
+const FAKE_ANSWER = "- Fake AI response, line one.\n- Fake AI response, line two.\n- Fake AI response, line three.";
+
 /**
  * A provider for tests and offline development. It never calls a network.
- * Without a script it answers with a fixed line.
+ * Without a script it answers with three fixed lines.
  */
 export function createFakeAiProvider(): FakeAiProvider {
   const queue: Partial<AiResponse>[] = [];
@@ -23,9 +25,10 @@ export function createFakeAiProvider(): FakeAiProvider {
       requests.push(request);
       const next = queue.shift() ?? {};
       return {
-        text: next.text ?? "Fake AI response.",
+        text: next.text ?? FAKE_ANSWER,
         toolCalls: next.toolCalls ?? [],
-        usage: next.usage ?? { inputTokens: 100, outputTokens: 20 },
+        complete: next.complete ?? true,
+        usage: next.usage ?? { inputTokens: 100, outputTokens: 20, costUsd: 0 },
       };
     },
   };

@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 import { ChevronLeft } from "lucide-react";
 import { ACTIVITY_KIND_ICON } from "@/components/companies/activity-kind";
+import { SummaryCard } from "@/components/ai/summary-card";
 import { DeleteCompanyButton, EditCompanyButton } from "@/components/companies/company-forms";
 import { AddContactButton, ContactActions } from "@/components/companies/contact-forms";
 import { ActivityActions, LogActivityButton } from "@/components/companies/activity-forms";
@@ -41,7 +42,7 @@ export default function CompanyPage({ params }: PageProps<"/companies/[id]">) {
 async function CompanyView({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const [{ crm }, today] = await Promise.all([requireLiveSandbox(), visitorToday()]);
-  const [found, team] = await Promise.all([crm.companies.get(id, { today }), crm.team.list()]);
+  const [found, team, actions] = await Promise.all([crm.companies.get(id, { today }), crm.team.list(), crm.ai.actionsLeft()]);
   if (!found.ok) return found.error === "not_found" ? notFound() : redirect(landingFor(found.error));
   const company = found.value;
   const owners = ownerOptions(valueOrLanding(team));
@@ -66,12 +67,21 @@ async function CompanyView({ params }: { params: Promise<{ id: string }> }) {
             owners={owners}
             company={{ id: company.id, name: company.name, industry: company.industry, city: company.city, ownerId: company.owner.id }}
           />
-          <DeleteCompanyButton company={company} />
+          <DeleteCompanyButton company={{ id: company.id, name: company.name }} />
         </div>
       </div>
 
       <div className="mt-6 grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1fr)_380px]">
-        <Timeline company={company} />
+        <div className="grid grid-cols-1 gap-5">
+          <SummaryCard
+            id={`company-${company.id}`}
+            companyId={company.id}
+            companyName={company.name}
+            summary={company.summary}
+            actions={valueOrLanding(actions)}
+          />
+          <Timeline company={company} />
+        </div>
         <div className="grid grid-cols-1 gap-5">
           <Retainers company={company} owners={owners} />
           <Deals company={company} />

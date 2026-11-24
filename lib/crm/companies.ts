@@ -15,6 +15,7 @@ import { ACTIVITY_COLUMNS, toActivity, type Activity } from "./activities";
 import { CONTACT_COLUMNS, toContact, type Contact } from "./contacts";
 import { DEAL_COLUMNS, toCard, type DealCard } from "./deals";
 import { RETAINER_COLUMNS, companyStatus, toRetainer, type Retainer } from "./retainers";
+import { SUMMARY_COLUMNS, toSeen, toSummary, type Summary } from "./summaries";
 import type { CompanyStatus, Day } from "./terms";
 
 export type CompanyListItem = {
@@ -35,6 +36,8 @@ export type CompanyDetail = CompanyListItem & {
   deals: DealCard[];
   /** The first to end first. */
   retainers: Retainer[];
+  /** What the AI last wrote about it, if anything. */
+  summary: Summary | null;
 };
 
 /** `today` is the visitor's own, because a Client is a Company whose Retainer hasn't ended. */
@@ -72,7 +75,7 @@ export function companiesArea({ db, inLiveSandbox }: CrmContext) {
     get: (id: string, view: { today: Day }) =>
       inLiveSandbox(async () => {
         if (!isId(id)) return fail("not_found");
-        const [company, contacts, activities, deals, retainers] = await Promise.all([
+        const [company, contacts, activities, deals, retainers, summary] = await Promise.all([
           db.from("companies").select(COMPANY_COLUMNS).eq("id", id).maybeSingle(),
           db.from("contacts").select(CONTACT_COLUMNS).eq("company_id", id).order("name"),
           db.from("activities").select(ACTIVITY_COLUMNS).eq("company_id", id).order("occurred_at", { ascending: false }),
@@ -83,8 +86,9 @@ export function companiesArea({ db, inLiveSandbox }: CrmContext) {
             .order("closed_on", { ascending: false, nullsFirst: true })
             .order("created_at", { ascending: false }),
           db.from("retainers").select(RETAINER_COLUMNS).eq("company_id", id).order("end_date").order("id"),
+          db.from("ai_summaries").select(SUMMARY_COLUMNS).eq("company_id", id).maybeSingle(),
         ]);
-        for (const { error } of [company, contacts, activities, deals, retainers]) if (error) unexpected(error);
+        for (const { error } of [company, contacts, activities, deals, retainers, summary]) if (error) unexpected(error);
         if (!company.data) return fail("not_found");
         return ok<CompanyDetail>({
           ...toListItem(company.data, view.today),
@@ -92,6 +96,7 @@ export function companiesArea({ db, inLiveSandbox }: CrmContext) {
           activities: activities.data!.map(toActivity),
           deals: deals.data!.map((row) => toCard(row, view.today)),
           retainers: retainers.data!.map((row) => toRetainer(row, view.today)),
+          summary: toSummary(summary.data, activities.data!.map(toSeen)),
         });
       }),
 

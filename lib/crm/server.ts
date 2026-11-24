@@ -4,7 +4,7 @@ import { connection } from "next/server";
 import { cache } from "react";
 import { aiProviderFromEnv } from "@/lib/ai";
 import { createVisitorClient } from "@/lib/supabase/server";
-import { createCrm, type NoLiveSandbox, type Result, type SandboxLimits } from "./index";
+import { createCrm, type AiLimits, type NoLiveSandbox, type Result, type SandboxLimits } from "./index";
 
 /** The CRM module for this request, acting as the visitor. One per request. */
 export const getCrm = cache(async () => {
@@ -14,12 +14,18 @@ export const getCrm = cache(async () => {
   return createCrm(await createVisitorClient(), { ai: aiProviderFromEnv(), limits: limitsFromEnv() });
 });
 
-function limitsFromEnv(): SandboxLimits {
-  const perDay = Number.parseInt(process.env.DEMO_SANDBOXES_PER_IP_PER_DAY ?? "", 10);
+function limitsFromEnv(): SandboxLimits & AiLimits {
   return {
-    sandboxesPerIpPerDay: Number.isNaN(perDay) ? 5 : perDay,
+    sandboxesPerIpPerDay: numberFrom(process.env.DEMO_SANDBOXES_PER_IP_PER_DAY, 5),
     ipHashSalt: process.env.IP_HASH_SALT ?? "",
+    aiActionsPerSandbox: numberFrom(process.env.DEMO_AI_ACTIONS_PER_SANDBOX_PER_DAY, 30),
+    aiActionsPerDay: numberFrom(process.env.DEMO_DAILY_AI_ACTION_CAP, 1000),
   };
+}
+
+function numberFrom(value: string | undefined, fallback: number): number {
+  const parsed = value?.trim() ? Number(value) : Number.NaN;
+  return Number.isInteger(parsed) ? parsed : fallback;
 }
 
 /** Where a visitor without a live Sandbox goes: the landing page, with a notice if theirs ran out. */

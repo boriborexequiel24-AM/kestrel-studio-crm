@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 import { CalendarClock, Check, CircleX, MessageSquareText, Repeat, Users } from "lucide-react";
+import { SummaryCard } from "@/components/ai/summary-card";
 import { LinkSwitch } from "@/components/app/link-switch";
 import { PageHeader } from "@/components/app/page-header";
 import { RelativeTime } from "@/components/app/relative-time";
@@ -224,7 +225,7 @@ function Kpi({ label, value, detail, bar, alert = false }: { label: string; valu
 async function DealSheet({ id, searchParams }: { id: string; searchParams: SearchParams }) {
   const choice = await choiceFrom(searchParams);
   const [{ crm }, today] = await Promise.all([requireLiveSandbox(), visitorToday()]);
-  const [found, options] = await Promise.all([crm.deals.get(id, { today }), dealFormOptions(crm)]);
+  const [found, options, actions] = await Promise.all([crm.deals.get(id, { today }), dealFormOptions(crm), crm.ai.actionsLeft()]);
   if (!found.ok) return found.error === "not_found" ? notFound() : redirect(landingFor(found.error));
   const deal = found.value;
   // On a narrow screen, leaving a Deal goes back to its Stage.
@@ -275,6 +276,14 @@ async function DealSheet({ id, searchParams }: { id: string; searchParams: Searc
         {deal.lostReason && <LostBanner reason={deal.lostReason} on={deal.closedOn} />}
         {deal.retainer && <RetainerCard deal={deal} retainer={deal.retainer} />}
         {(deal.nextStep || isOpenStage(deal.stage)) && <NextStepCard deal={deal} today={today} />}
+        <SummaryCard
+          id={`deal-${deal.id}`}
+          companyId={deal.company.id}
+          companyName={deal.company.name}
+          summary={deal.summary}
+          actions={valueOrLanding(actions)}
+          heading="h3"
+        />
         <div className="grid grid-cols-1 items-start gap-5 sm:grid-cols-2">
           <ProposalCard deal={deal} />
           <PeopleCard deal={deal} />

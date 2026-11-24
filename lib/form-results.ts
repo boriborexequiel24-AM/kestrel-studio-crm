@@ -52,6 +52,12 @@ const MESSAGES: Record<string, { message: string; field?: string }> = {
   end_date_changed: { message: "This Retainer's end date changed while you were editing. Reload the page to see it.", field: "endDate" },
   retainer_ended: { message: "This Retainer has ended. Start a new Deal instead." },
   end_before_start: { message: "A Retainer can't end before it starts.", field: "endDate" },
+  ai_sandbox_limit_reached: { message: "You have used all your AI actions for today. Everything else keeps working." },
+  ai_daily_cap_reached: {
+    message: "The whole demo has reached its AI limit for today, so it's nothing you did. Everything else keeps working, and the AI is back tomorrow.",
+  },
+  ai_unavailable: { message: "The AI didn't answer. That used one AI action. Try again in a moment." },
+  nothing_to_summarize: { message: "There's nothing to summarize yet. Log an Activity or add a Deal first." },
   lost_reason_required: { message: "Pick a Lost reason.", field: "lostReason" },
 };
 

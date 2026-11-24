@@ -222,6 +222,47 @@ describe("Sandbox isolation", () => {
       expect(expectOk(await mine.crm.retainers.list({ today })).map((each) => each.id)).not.toContain(theirRetainer.id);
     });
 
+    it("can't read, change or use up another Sandbox's AI actions or summaries", async () => {
+      const today = utcDay();
+      const [company] = await companyIds(theirs);
+      const written = expectOk(await theirs.crm.ai.summarize(company, { today }));
+      const crm = mine.db.schema("crm");
+      const usage = await theirs.db.schema("crm").from("ai_usage").select("*").single();
+      const theirSummary = () => theirs.db.schema("crm").from("ai_summaries").select("*").single();
+      const before = (await theirSummary()).data;
+
+      const rows = [
+        await crm.from("ai_usage").select("id").eq("sandbox_id", theirs.sandbox.id),
+        await crm.from("ai_summaries").select("company_id").eq("sandbox_id", theirs.sandbox.id),
+      ];
+      await crm.from("ai_summaries").update({ lines: ["Hacked"] }).eq("sandbox_id", theirs.sandbox.id);
+      await crm.from("ai_summaries").delete().eq("sandbox_id", theirs.sandbox.id);
+      const added = await crm
+        .from("ai_summaries")
+        .insert({ sandbox_id: theirs.sandbox.id, company_id: (await companyIds(theirs))[1], lines: ["Hacked"], activities_seen: "" });
+      await crm.rpc("finish_ai_action", { action: usage.data!.id, input_tokens: 9, output_tokens: 9, cost_usd: 9 });
+      expectOk(await mine.crm.ai.summarize((await companyIds(mine))[2], { today }));
+
+      expect(rows.map((each) => each.data)).toEqual([[], []]);
+      expect(added.error).not.toBeNull();
+      expect((await theirSummary()).data).toEqual(before);
+      expect((await theirs.db.schema("crm").from("ai_usage").select("*").single()).data).toEqual(usage.data);
+      expect(expectOk(await theirs.crm.ai.actionsLeft()).left).toBe(29);
+      expect(expectOk(await mine.crm.ai.actionsLeft()).left).toBe(29);
+      // The Company has the same id in both Sandboxes, but not the same summary.
+      expect(expectOk(await mine.crm.companies.get(company, { today })).summary).toBeNull();
+      expect(expectOk(await theirs.crm.companies.get(company, { today })).summary?.lines).toEqual(written.lines);
+    });
+
+    it("can't finish another Sandbox's AI action while it runs", async () => {
+      const begin = await theirs.db.schema("crm").rpc("begin_ai_action", { feature: "ask", sandbox_limit: 30, daily_cap: 10_000 });
+
+      await mine.db.schema("crm").rpc("finish_ai_action", { action: begin.data!, input_tokens: 9, output_tokens: 9, cost_usd: 9 });
+
+      const { data } = await theirs.db.schema("crm").from("ai_usage").select("finished_at, cost_usd").eq("id", begin.data!).single();
+      expect(data).toEqual({ finished_at: null, cost_usd: null });
+    });
+
     it("can't see another Sandbox's Deals on the Pipeline, open or closed", async () => {
       const view = { today: utcDay(), owners: "everyone" as const };
       const open = await dealWithSentProposal(theirs.crm);
